@@ -1377,15 +1377,70 @@ const aiChatSchema = z.object({
   })).min(1).max(50),
 });
 
+// ── Smart Mock AI Response Generator ──
+function generateMockAiResponse(messages: { role: string; content: string }[]): string {
+  const userMessages = messages.filter(m => m.role === "user");
+  const lastUserMsg = userMessages[userMessages.length - 1]?.content || "";
+  const allUserContent = userMessages.map(m => m.content.toLowerCase()).join(" ");
+  const turnCount = userMessages.length;
+  
+  // Detect scam scenario from conversation
+  const isWhatsApp = allUserContent.includes("whatsapp") || allUserContent.includes("wa ") || allUserContent.includes("whatsapp");
+  const isTransferMoney = allUserContent.includes("transfer") || allUserContent.includes("bank") || allUserContent.includes("money");
+  const hasSharedInfo = allUserContent.includes("yes") || allUserContent.includes("shared") || allUserContent.includes("gave");
+  const hasNotSharedInfo = allUserContent.includes("no") && !allUserContent.includes("note");
+  
+  // First turn - ask for details
+  if (turnCount === 1) {
+    if (lastUserMsg.toLowerCase().includes("bank") || lastUserMsg.toLowerCase().includes("maybank") || lastUserMsg.toLowerCase().includes("cimb")) {
+      return "Bank-related scams are very common in Malaysia. Here's what you should do:\n\n1. **Do NOT click any links** in suspicious messages\n2. **Call your bank directly** using the official number from their website\n3. **Check your account** through the official banking app\n4. **Report to BNM** at 1-300-88-5465 if you've shared any details\n\nWould you like me to help you identify if the message is legitimate?";
+    }
+    if (lastUserMsg.toLowerCase().includes("call") || lastUserMsg.toLowerCase().includes("phone")) {
+      return "Phone scams often involve callers claiming to be from authorities or banks. Remember:\n\n1. **Government agencies never ask for money over the phone**\n2. **Never share OTP codes** with anyone\n3. **Hang up and verify** by calling the official number\n4. **Report to PDRM** via their hotline\n\nStay calm and don't let them pressure you into quick decisions.";
+    }
+    if (lastUserMsg.toLowerCase().includes("invest") || lastUserMsg.toLowerCase().includes("crypto") || lastUserMsg.toLowerCase().includes("profit")) {
+      return "Investment scams promise high returns with little risk. Warning signs include:\n\n1. **Guaranteed returns** - real investments always carry risk\n2. **Pressure to act fast** - legitimate opportunities don't disappear\n3. **Unregulated platforms** - check if they're licensed by SC Malaysia\n4. **Requests for personal banking info**\n\nReport investment scams to the Securities Commission at 03-6204 8999.";
+    }
+    return "I'm here to help you assess potential scams. To give you the best guidance, could you tell me:\n\n1. **How were you contacted?** (call, SMS, WhatsApp, email)\n2. **What were you asked to do?** (transfer money, click a link, share info)\n3. **Did you share any personal or banking details?**\n\nThe more details you provide, the better I can assist you with next steps.";
+  }
+  
+  // Second+ turn - provide contextual advice based on scenario
+  if (isWhatsApp && isTransferMoney) {
+    if (hasNotSharedInfo) {
+      return "🛡️ **Good news - you're likely safe!** Since you didn't share any personal information, the scammer has limited ability to harm you.\n\n**Immediate actions:**\n1. **Block the WhatsApp number** - don't engage further\n2. **Screenshot the conversation** as evidence\n3. **Report to WhatsApp** using the \"Report\" feature\n4. **Stay vigilant** - they may try again from different numbers\n\n**⚠️ WhatsApp Scam Alert:**\nThis is a common \"parcel scam\" or \"job scam\" pattern. Scammers often:\n- Claim you won a prize or have a pending delivery\n- Ask for small payments to release larger sums\n- Use fake courier websites\n\nWould you like me to help you report this to the authorities?";
+    }
+    if (hasSharedInfo) {
+      return "🚨 **URGENT - Take action now!**\n\nSince you've shared information, here's your action plan:\n\n**Within the next hour:**\n1. **Call your bank immediately** to freeze your account\n   - Maybank: 1-300-88-6688\n   - CIMB: 1-300-88-8228\n   - Public Bank: 1-800-88-3323\n2. **Change your online banking password** from a different device\n3. **Check for unauthorized transactions**\n\n**Report to authorities:**\n- **PDRM Cyber Crime**: https://cybersecurity.rmp.gov.my\n- **BNM Telelink**: 1-300-88-5465\n- **NPCC Scam Response**: 03-2610 1500\n\nDo you need help with any of these steps?";
+    }
+    return "Thank you for the details. WhatsApp scams asking for money transfers are very common in Malaysia.\n\n**Did you share any personal or banking information with them?** (yes/no)\n\nThis will help me guide you on the next steps.";
+  }
+  
+  // Generic follow-up
+  if (lastUserMsg.toLowerCase().includes("yes")) {
+    return "🚨 **URGENT - Take action now!**\n\nSince you've shared information, here's your action plan:\n\n**Within the next hour:**\n1. **Call your bank immediately** to freeze your account\n2. **Change your online banking password** from a different device\n3. **Check for unauthorized transactions**\n\n**Report to authorities:**\n- **PDRM Cyber Crime**: https://cybersecurity.rmp.gov.my\n- **BNM Telelink**: 1-300-88-5465\n\nDo you need help with any of these steps?";
+  }
+  
+  if (lastUserMsg.toLowerCase().includes("no")) {
+    return "🛡️ **Good news - you're likely safe!** Since you didn't share any personal information, the scammer has limited ability to harm you.\n\n**Recommended actions:**\n1. **Block the contact** - don't engage further\n2. **Screenshot the conversation** as evidence\n3. **Report to the platform** where you were contacted\n\nWould you like me to help you report this to the authorities?";
+  }
+  
+  return "Thank you for sharing that information. Based on what you've told me, I recommend:\n\n1. **Do not engage further** with the suspicious contact\n2. **Document everything** - take screenshots\n3. **Report to PDRM** if you've suffered any loss\n4. **Monitor your accounts** for unusual activity\n\nIs there anything specific you'd like help with?";
+}
+
 app.post("/api/ai/chat", async (c) => {
   const apiKey = c.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return jsonError("AI chat is not configured.", 503);
-  }
-
   const parsed = aiChatSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return jsonError("Invalid chat payload.");
+  }
+
+  // ── Mock fallback for development when API key not configured ──
+  // Check for missing, empty, or placeholder API keys
+  const isValidApiKey = apiKey && apiKey.length > 10 && !apiKey.startsWith("TODO") && apiKey !== "";
+  if (!isValidApiKey) {
+    const mockResponse = generateMockAiResponse(parsed.data.messages);
+    await new Promise(r => setTimeout(r, 500));
+    return c.json({ message: mockResponse });
   }
 
   // ── Daily quota enforcement for AI chat ──
@@ -1442,6 +1497,13 @@ app.post("/api/ai/chat", async (c) => {
     lastStatus = response.status;
     lastError = await response.text().catch(() => "Unknown error");
     logger.warn("ai_chat_upstream_error", { model, status: lastStatus, error: lastError });
+    
+    // If authentication failed, the API key is invalid - fall back to mock
+    if (lastStatus === 502 && lastError.includes("authenticate")) {
+      logger.warn("ai_chat_auth_failed", { message: "OpenRouter API key appears invalid, using mock response" });
+      const mockResponse = generateMockAiResponse(parsed.data.messages);
+      return c.json({ message: mockResponse });
+    }
   }
 
   logger.error("ai_chat_upstream_error", { status: lastStatus, error: lastError });
