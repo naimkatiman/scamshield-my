@@ -74,9 +74,75 @@
         </div>
 
         <!-- ============================================================ -->
-        <!--  PHASE 1: HERO INPUT                                          -->
+        <!--  MODE TOGGLE                                                   -->
         <!-- ============================================================ -->
-        <section id="phase-hero" class="flow-phase flow-phase--hero card" data-animate>
+        <div class="mode-toggle-wrap">
+          <button id="mode-ai" class="mode-toggle-btn mode-toggle-btn--active">
+            <svg class="icon"><use href="#icon-sparkles"></use></svg>
+            <span data-i18n="nav.ai_assistant">AI Assistant</span>
+          </button>
+          <button id="mode-manual" class="mode-toggle-btn">
+            <svg class="icon"><use href="#icon-search"></use></svg>
+            <span data-i18n="nav.manual_toolkit">Manual Toolkit</span>
+          </button>
+        </div>
+
+        <!-- ============================================================ -->
+        <!--  PHASE 1A: AI MODE HERO                                       -->
+        <!-- ============================================================ -->
+        <section id="phase-hero-ai" class="flow-phase flow-phase--hero card" data-animate>
+          <div class="hero-badge">
+            <svg class="icon icon-lg"><use href="#icon-sparkles"></use></svg>
+            <span class="eyebrow">ScamShield MY</span>
+          </div>
+          <h1 data-i18n="hero.ai.title">Got scammed?<br>Tell me what happened.</h1>
+          <p class="hero-subtitle" data-i18n="hero.ai.subtitle">
+            AI-powered scam response. Describe your situation and I'll guide you through immediate actions.
+          </p>
+
+          <!-- Inline AI Chat -->
+          <div id="ai-chat-inline" class="ai-chat-inline">
+            <div id="ai-chat-messages-inline" class="ai-chat-messages">
+              <div class="ai-msg ai-msg--assistant">
+                <div class="ai-msg-avatar">
+                  <svg class="icon"><use href="#icon-shield"></use></svg>
+                </div>
+                <div class="ai-msg-bubble">
+                  <p><strong data-i18n="ai.greeting.title">I'm your ScamShield AI assistant.</strong></p>
+                  <p data-i18n="ai.greeting.body">Tell me what happened — what type of scam, when it occurred, and what you've done so far. I'll guide you through the fastest containment steps.</p>
+                  <p class="ai-msg-hint" data-i18n="ai.greeting.hint">You can write in English or Bahasa Melayu.</p>
+                </div>
+              </div>
+            </div>
+            <div class="ai-quick-actions" id="ai-quick-actions">
+              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="I got scammed — what should I do right now?" data-i18n="ai.quick.scammed">I got scammed — what now?</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="I need to check a suspicious wallet address" data-i18n="ai.quick.check_wallet">Check a wallet address</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="Help me generate a police report for a scam" data-i18n="ai.quick.report">Generate a report</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="What are the emergency contacts for reporting scams in Malaysia?" data-i18n="ai.quick.emergency">Emergency contacts</button>
+            </div>
+            <form id="ai-chat-form-inline" class="ai-chat-input-row">
+              <textarea id="ai-chat-input-inline" class="ai-chat-input"
+                placeholder="Describe your situation... e.g. &quot;I sent RM5,000 to a fake investment group on Telegram 2 hours ago&quot;"
+                data-i18n-placeholder="ai.input.placeholder" rows="2"></textarea>
+              <button type="submit" id="ai-chat-send-inline" class="btn btn-primary ai-chat-send">
+                <span class="btn-text" data-i18n="ai.btn.send">Send</span>
+                <span class="btn-loader hidden">
+                  <svg class="icon icon-spin"><use href="#icon-loader"></use></svg>
+                </span>
+              </button>
+            </form>
+          </div>
+
+          <p class="hero-reassurance">
+            <span data-i18n="hero.flow.reassurance_free">Free to use.</span>
+            <a href="/api/auth/login" class="hero-signin-link" data-i18n="hero.flow.signin_cta">Sign in free for 30 reports/day</a>
+          </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!--  PHASE 1B: MANUAL MODE HERO                                   -->
+        <!-- ============================================================ -->
+        <section id="phase-hero" class="flow-phase flow-phase--hero card hidden" data-animate>
           <div class="hero-badge">
             <svg class="icon icon-lg"><use href="#icon-shield"></use></svg>
             <span class="eyebrow">ScamShield MY</span>
@@ -92,7 +158,7 @@
               <input id="flow-input" type="text"
                 placeholder="Paste anything: 0x... address, @handle, URL, phone number"
                 data-i18n-placeholder="flow.input.placeholder"
-                required autocomplete="off" autofocus>
+                required autocomplete="off">
               <span id="flow-detect-badge" class="auto-detect-badge hidden"></span>
             </div>
             <button type="submit" id="flow-submit" class="btn btn-primary btn-lg flow-submit">
@@ -104,8 +170,9 @@
             </button>
           </form>
 
-          <p class="hero-reassurance" data-i18n="hero.flow.reassurance">
-            Free to use. No sign-up required. Your data stays private.
+          <p class="hero-reassurance">
+            <span data-i18n="hero.flow.reassurance_free">Free to use.</span>
+            <a href="/api/auth/login" class="hero-signin-link" data-i18n="hero.flow.signin_cta">Sign in free for 30 reports/day</a>
           </p>
         </section>
 
@@ -198,6 +265,19 @@
 
             <div id="flow-report-severity" class="report-severity"></div>
 
+            <!-- Report mode toggle: AI vs Template -->
+            <div class="report-mode-toggle" id="report-mode-toggle">
+              <button id="report-mode-ai" class="report-mode-btn report-mode-btn--active">
+                <svg class="icon"><use href="#icon-sparkles"></use></svg>
+                AI Generated
+              </button>
+              <button id="report-mode-template" class="report-mode-btn">
+                <svg class="icon"><use href="#icon-file-text"></use></svg>
+                Template
+              </button>
+              <span id="report-mode-badge" class="report-mode-badge hidden"></span>
+            </div>
+
             <div class="report-tabs" id="flow-report-tabs">
               <button class="tab-btn active" data-tab="flow-bank" data-i18n="report.tab.bank">For Bank</button>
               <button class="tab-btn" data-tab="flow-police" data-i18n="report.tab.police">For Police</button>
@@ -239,10 +319,16 @@
                 <span class="form-label" data-i18n="flow.reports.edit_loss">Estimated Loss (edit if known):</span>
                 <input id="flow-loss-input" type="text" placeholder="e.g. MYR 3,500" value="Unknown">
               </label>
-              <button id="flow-regenerate-reports" class="btn btn-sm">
-                <svg class="icon"><use href="#icon-refresh"></use></svg>
-                <span data-i18n="flow.reports.regenerate">Update Reports</span>
-              </button>
+              <div class="flow-edit-actions">
+                <button id="flow-regenerate-reports" class="btn btn-sm">
+                  <svg class="icon"><use href="#icon-refresh"></use></svg>
+                  <span data-i18n="flow.reports.regenerate">Update Reports</span>
+                </button>
+                <button id="flow-export-pdf" class="btn btn-sm btn-pdf">
+                  <svg class="icon"><use href="#icon-file-text"></use></svg>
+                  <span data-i18n="flow.reports.export_pdf">Download PDF</span>
+                </button>
+              </div>
             </div>
           </section>
 
@@ -303,6 +389,71 @@
                   </button>
                 </div>
               </div>
+
+              <!-- Warning Card Customization Panel -->
+              <details id="warning-customize-panel" class="customize-panel">
+                <summary class="customize-toggle">
+                  <svg class="icon"><use href="#icon-sparkles"></use></svg>
+                  <span data-i18n="warning.customize.toggle">Customize Warning Card</span>
+                  <svg class="icon icon-chevron"><use href="#icon-chevron-down"></use></svg>
+                </summary>
+                <div class="customize-body">
+                  <div class="customize-grid">
+                    <div class="customize-field">
+                      <label class="form-label" data-i18n="warning.customize.theme">Color Theme</label>
+                      <div class="theme-picker" id="customize-theme-picker">
+                        <button class="theme-swatch theme-swatch--active" data-theme="auto" title="Auto (based on verdict)">
+                          <span class="swatch-dot swatch-dot--auto"></span> Auto
+                        </button>
+                        <button class="theme-swatch" data-theme="danger" title="Danger (Red)">
+                          <span class="swatch-dot swatch-dot--danger"></span> Danger
+                        </button>
+                        <button class="theme-swatch" data-theme="caution" title="Caution (Amber)">
+                          <span class="swatch-dot swatch-dot--caution"></span> Caution
+                        </button>
+                        <button class="theme-swatch" data-theme="safe" title="Safe (Green)">
+                          <span class="swatch-dot swatch-dot--safe"></span> Safe
+                        </button>
+                        <button class="theme-swatch" data-theme="neutral" title="Neutral (Blue)">
+                          <span class="swatch-dot swatch-dot--neutral"></span> Neutral
+                        </button>
+                      </div>
+                    </div>
+                    <div class="customize-field">
+                      <label class="form-label" data-i18n="warning.customize.language">Card Language</label>
+                      <div class="lang-picker" id="customize-lang-picker">
+                        <button class="lang-option lang-option--active" data-lang="en">English</button>
+                        <button class="lang-option" data-lang="bm">Bahasa Melayu</button>
+                      </div>
+                    </div>
+                    <div class="customize-field customize-field--wide">
+                      <label class="form-label" data-i18n="warning.customize.headline">Custom Headline</label>
+                      <input id="customize-headline" type="text" class="customize-input" placeholder="Leave blank for auto-generated headline" maxlength="200">
+                    </div>
+                    <div class="customize-field customize-field--wide">
+                      <label class="form-label" data-i18n="warning.customize.footer">Footer Text</label>
+                      <input id="customize-footer" type="text" class="customize-input" placeholder="Custom footer message (optional)" maxlength="200">
+                    </div>
+                    <div class="customize-field">
+                      <label class="customize-checkbox-label">
+                        <input id="customize-show-identifiers" type="checkbox" checked>
+                        <span data-i18n="warning.customize.show_ids">Show flagged identifiers</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="customize-actions">
+                    <button id="customize-preview-btn" class="btn btn-sm">
+                      <svg class="icon"><use href="#icon-search"></use></svg>
+                      <span data-i18n="warning.customize.preview">Preview</span>
+                    </button>
+                    <button id="customize-apply-btn" class="btn btn-sm btn-primary">
+                      <svg class="icon"><use href="#icon-refresh"></use></svg>
+                      <span data-i18n="warning.customize.apply">Apply &amp; Regenerate</span>
+                    </button>
+                  </div>
+                </div>
+              </details>
+
               <div id="flow-warning-preview-shell" class="warning-preview-shell">
                 <div class="warning-preview-header">
                   <span class="warning-preview-tag" data-i18n="warning.preview.tag">Community Alert Bulletin</span>
@@ -413,6 +564,12 @@
     <span class="ai-fab-label">AI Help</span>
   </button>
 
+  <!-- Telegram Support FAB -->
+  <a href="https://t.me/ScamShieldMY" target="_blank" id="tg-fab" class="tg-fab" aria-label="Telegram Support">
+    <svg class="icon"><use href="#icon-telegram"></use></svg>
+    <span class="tg-fab-label" data-i18n="nav.telegram">Telegram</span>
+  </a>
+
   <!-- SVG Sprite Sheet -->
   <svg style="display: none;">
     <defs>
@@ -520,6 +677,10 @@
         <circle cx="12" cy="12" r="10" />
         <line x1="15" y1="9" x2="9" y2="15" />
         <line x1="9" y1="9" x2="15" y2="15" />
+      </symbol>
+      <symbol id="icon-telegram" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.19 5.11l-2.55 12.04c-.19.85-.7 1.06-1.41.66l-3.89-2.87-1.88 1.81c-.21.21-.38.38-.78.38l.28-3.95L18.15 6.5c.31-.27-.07-.42-.48-.15L7.29 12.96l-3.83-1.2c-.83-.26-.85-.83.17-1.23L18.49 4.31c.69-.25 1.3.17 1.05 1.25z" />
       </symbol>
     </defs>
   </svg>

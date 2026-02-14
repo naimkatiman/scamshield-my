@@ -42,11 +42,18 @@ export interface VerdictRequest {
   chain?: string;
 }
 
+export interface WarningCardCustomization {
+  theme?: "danger" | "caution" | "safe" | "neutral";
+  footerText?: string;
+  language?: "en" | "bm";
+}
+
 export interface WarningCardPayload {
   verdict: Verdict;
   headline: string;
   identifiers: Record<string, string>;
   reasons: string[];
+  customization?: WarningCardCustomization;
 }
 
 export interface ReportRequest {

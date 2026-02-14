@@ -8,6 +8,7 @@ export const translations = {
         "nav.admin": "Admin",
         "nav.ai_assistant": "AI Assistant",
         "nav.manual_toolkit": "Manual Toolkit",
+        "nav.telegram": "Telegram Support",
 
         // AI Mode
         "hero.ai.title": "Got scammed?<br>Tell me what happened.",
@@ -128,6 +129,8 @@ export const translations = {
         "hero.flow.title": "I think I got scammed.",
         "hero.flow.subtitle": "Paste the suspicious URL, wallet address, phone number, or handle below. We'll generate your complete recovery kit in seconds.",
         "hero.flow.reassurance": "Free to use. No sign-up required. Your data stays private.",
+        "hero.flow.reassurance_free": "Free to use.",
+        "hero.flow.signin_cta": "Sign in free for 30 reports/day",
         "flow.input.placeholder": "Paste anything: 0x... address, @handle, URL, phone number",
         "flow.btn.check": "Check Now",
         "flow.btn.checking": "Checking...",
@@ -168,6 +171,7 @@ export const translations = {
         "nav.admin": "Admin",
         "nav.ai_assistant": "Pembantu AI",
         "nav.manual_toolkit": "Kit Manual",
+        "nav.telegram": "Bantuan Telegram",
 
         // AI Mode
         "hero.ai.title": "Terkena scam?<br>Beritahu saya apa yang berlaku.",
@@ -288,6 +292,8 @@ export const translations = {
         "hero.flow.title": "Saya rasa saya kena scam.",
         "hero.flow.subtitle": "Tampal URL, alamat dompet, nombor telefon, atau handle yang mencurigakan di bawah. Kami akan jana kit pemulihan lengkap anda dalam beberapa saat.",
         "hero.flow.reassurance": "Percuma. Tiada pendaftaran diperlukan. Data anda kekal peribadi.",
+        "hero.flow.reassurance_free": "Percuma digunakan.",
+        "hero.flow.signin_cta": "Log masuk percuma untuk 30 laporan/hari",
         "flow.input.placeholder": "Tampal apa sahaja: alamat 0x..., @handle, URL, nombor telefon",
         "flow.btn.check": "Semak Sekarang",
         "flow.btn.checking": "Menyemak...",

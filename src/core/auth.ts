@@ -101,15 +101,26 @@ export async function exchangeGoogleCode(code: string, env: Env): Promise<Google
 
 // ── D1 user management ──
 
+const ADMIN_EMAILS = ["naimkatiman@gmail.com"];
+
 export async function findOrCreateUser(db: D1Database, email: string): Promise<User> {
+    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
     const existing = await db.prepare("SELECT * FROM users WHERE email = ?").bind(email).first<User>();
-    if (existing) return existing;
+    if (existing) {
+        // Promote to admin if email is in admin list but role isn't set yet
+        if (isAdmin && existing.role !== "admin") {
+            await db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").bind(existing.id).run();
+            existing.role = "admin";
+        }
+        return existing;
+    }
 
     const id = crypto.randomUUID();
-    await db.prepare("INSERT INTO users (id, email, role) VALUES (?, ?, 'user')")
-        .bind(id, email).run();
+    const role = isAdmin ? "admin" : "user";
+    await db.prepare("INSERT INTO users (id, email, role) VALUES (?, ?, ?)")
+        .bind(id, email, role).run();
 
-    return { id, email, role: "user", created_at: new Date().toISOString() };
+    return { id, email, role, created_at: new Date().toISOString() };
 }
 
 // ── Usage quota ──

@@ -6,10 +6,13 @@ import { translations } from "./locales.js";
 
 const state = {
   phase: "hero", // hero | loading | verdict | recovery-kit | legit
+  mode: localStorage.getItem("scamshield-mode") || "ai", // "ai" | "manual"
   input: { raw: "", type: null, value: "", chain: "" },
   verdict: null,
   playbook: null,
   reports: null,
+  reportMode: "ai", // "ai" | "template"
+  templateReports: null, // keep template reports as fallback
   warningCard: null,
   recoveryTasks: [],
   completedTaskIds: new Set(),
@@ -20,6 +23,8 @@ const state = {
 const aiState = {
   messages: [],
   streaming: false,
+  inlineMessages: [],
+  inlineStreaming: false,
 };
 
 /* ── Auth ── */
@@ -43,7 +48,8 @@ async function initAuth() {
       if (quotaBadge && data.usage) {
         quotaBadge.classList.remove("hidden");
         const { remaining, limit } = data.usage;
-        quotaText.textContent = `${remaining}/${limit} left today`;
+        const points = Number(data.gamification?.totalPoints ?? 0);
+        quotaText.textContent = `${remaining}/${limit} left today • ${points} pts`;
         quotaBadge.classList.remove("quota-badge--warn", "quota-badge--danger");
         if (remaining <= 3) quotaBadge.classList.add("quota-badge--danger");
         else if (remaining <= 10) quotaBadge.classList.add("quota-badge--warn");
@@ -53,11 +59,14 @@ async function initAuth() {
         const adminLink = $("auth-admin-link");
         if (adminLink) adminLink.classList.remove("hidden");
       }
+
+      // Hide sign-in CTA links when authenticated
+      document.querySelectorAll(".hero-signin-link").forEach(el => el.classList.add("hidden"));
     } else {
       const quotaRes = await fetch("/api/quota").then((r) => r.json());
       if (quotaBadge && quotaRes) {
         quotaBadge.classList.remove("hidden");
-        quotaText.textContent = `${quotaRes.remaining}/${quotaRes.limit} free today`;
+        quotaText.textContent = `${quotaRes.remaining}/${quotaRes.limit} free — Sign in for 30/day`;
         quotaBadge.classList.remove("quota-badge--warn", "quota-badge--danger");
         if (quotaRes.remaining <= 1) quotaBadge.classList.add("quota-badge--danger");
         else if (quotaRes.remaining <= 2) quotaBadge.classList.add("quota-badge--warn");
@@ -98,6 +107,240 @@ function initLocalization() {
     });
   }
   setLanguage(state.lang);
+}
+
+/* ── Mode Toggle (AI / Manual) ── */
+
+function setMode(mode) {
+  state.mode = mode;
+  localStorage.setItem("scamshield-mode", mode);
+
+  const aiBtn = $("mode-ai");
+  const manualBtn = $("mode-manual");
+  const heroAi = $("phase-hero-ai");
+  const heroManual = $("phase-hero");
+
+  if (mode === "ai") {
+    aiBtn?.classList.add("mode-toggle-btn--active");
+    manualBtn?.classList.remove("mode-toggle-btn--active");
+    if (heroAi) heroAi.classList.remove("hidden");
+    if (heroManual) heroManual.classList.add("hidden");
+    // Focus AI input
+    setTimeout(() => $("ai-chat-input-inline")?.focus(), 200);
+  } else {
+    manualBtn?.classList.add("mode-toggle-btn--active");
+    aiBtn?.classList.remove("mode-toggle-btn--active");
+    if (heroManual) heroManual.classList.remove("hidden");
+    if (heroAi) heroAi.classList.add("hidden");
+    setTimeout(() => $("flow-input")?.focus(), 200);
+  }
+}
+
+function initModeToggle() {
+  $("mode-ai")?.addEventListener("click", () => setMode("ai"));
+  $("mode-manual")?.addEventListener("click", () => setMode("manual"));
+  setMode(state.mode);
+}
+
+/* ── Inline AI Chat (AI Mode) ── */
+
+function appendInlineAiMessage(role, content) {
+  const container = $("ai-chat-messages-inline");
+  if (!container) return null;
+
+  const msg = document.createElement("div");
+  msg.className = `ai-msg ai-msg--${role}`;
+
+  if (role === "assistant") {
+    msg.innerHTML = `
+      <div class="ai-msg-avatar">
+        <svg class="icon"><use href="#icon-shield"></use></svg>
+      </div>
+      <div class="ai-msg-bubble typing-effect"><p></p></div>
+    `;
+    if (content) msg.querySelector("p").innerHTML = simpleMarkdown(content);
+  } else {
+    msg.innerHTML = `<div class="ai-msg-bubble"><p>${escapeHtml(content)}</p></div>`;
+  }
+
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+  return msg;
+}
+
+async function sendInlineAiMessage(userText) {
+  if (aiState.inlineStreaming || !userText.trim()) return;
+
+  const input = $("ai-chat-input-inline");
+  const sendBtn = $("ai-chat-send-inline");
+  const btnText = sendBtn?.querySelector(".btn-text");
+  const btnLoader = sendBtn?.querySelector(".btn-loader");
+
+  // Hide quick actions after first message
+  const quickActions = $("ai-quick-actions");
+  if (quickActions) quickActions.classList.add("hidden");
+
+  aiState.inlineMessages.push({ role: "user", content: userText.trim() });
+  appendInlineAiMessage("user", userText.trim());
+
+  if (input) { input.value = ""; input.style.height = "auto"; }
+
+  aiState.inlineStreaming = true;
+  if (sendBtn) sendBtn.disabled = true;
+  if (btnText) btnText.classList.add("hidden");
+  if (btnLoader) btnLoader.classList.remove("hidden");
+
+  const assistantMsg = appendInlineAiMessage("assistant", "");
+  const bubble = assistantMsg?.querySelector(".ai-msg-bubble");
+  let fullContent = "";
+
+  try {
+    const response = await fetch("/api/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: aiState.inlineMessages.map(m => ({ role: m.role, content: m.content })) }),
+    });
+
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+
+    const data = await response.json();
+    const assistantText = data.message || data.error || "Error processing request.";
+
+    const p = bubble.querySelector("p");
+    p.parentElement.classList.add("typing-effect");
+
+    const words = assistantText.split(" ");
+    for (let i = 0; i < words.length; i++) {
+      fullContent += (i > 0 ? " " : "") + words[i];
+      p.innerHTML = simpleMarkdown(fullContent);
+
+      const container = $("ai-chat-messages-inline");
+      if (container) container.scrollTop = container.scrollHeight;
+
+      const delay = Math.max(5, Math.random() * 20);
+      if (i < words.length - 1) await new Promise(r => setTimeout(r, delay));
+    }
+
+    aiState.inlineMessages.push({ role: "assistant", content: assistantText });
+    p.parentElement.classList.remove("typing-effect");
+
+  } catch (error) {
+    console.error(error);
+    if (bubble) bubble.innerHTML = `<p class="error-msg">Error: ${escapeHtml(error.message)}</p>`;
+    aiState.inlineMessages.push({ role: "assistant", content: `Error: ${error.message}` });
+  } finally {
+    aiState.inlineStreaming = false;
+    if (sendBtn) sendBtn.disabled = false;
+    if (btnText) btnText.classList.remove("hidden");
+    if (btnLoader) btnLoader.classList.add("hidden");
+    if (input) input.focus();
+  }
+}
+
+function initInlineAiChat() {
+  const form = $("ai-chat-form-inline");
+  const input = $("ai-chat-input-inline");
+
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendInlineAiMessage(input?.value || "");
+  });
+
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendInlineAiMessage(input.value);
+    }
+  });
+
+  input?.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  });
+
+  // Quick action buttons
+  document.querySelectorAll(".ai-quick-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const prompt = btn.dataset.prompt;
+      if (prompt) sendInlineAiMessage(prompt);
+    });
+  });
+}
+
+/* ── Report Mode Toggle (AI / Template) ── */
+
+function initReportModeToggle() {
+  const aiBtn = $("report-mode-ai");
+  const templateBtn = $("report-mode-template");
+
+  aiBtn?.addEventListener("click", async () => {
+    if (state.reportMode === "ai") return;
+    state.reportMode = "ai";
+    aiBtn.classList.add("report-mode-btn--active");
+    templateBtn.classList.remove("report-mode-btn--active");
+    await generateAiReports();
+  });
+
+  templateBtn?.addEventListener("click", () => {
+    if (state.reportMode === "template") return;
+    state.reportMode = "template";
+    templateBtn.classList.add("report-mode-btn--active");
+    aiBtn.classList.remove("report-mode-btn--active");
+    if (state.templateReports) {
+      renderReportsPhase(state.templateReports);
+      showReportModeBadge("Template", "");
+    }
+  });
+}
+
+async function generateAiReports() {
+  if (!state.verdict) return;
+
+  const badge = $("report-mode-badge");
+  if (badge) {
+    badge.textContent = "Generating AI reports...";
+    badge.className = "report-mode-badge";
+  }
+
+  // Disable report textareas temporarily
+  ["flow-report-bank", "flow-report-police", "flow-report-platform"].forEach(id => {
+    const el = $(id);
+    if (el) el.value = "Generating AI-enhanced report...";
+  });
+
+  const payload = buildReportPayloadFromVerdict(state.verdict, state.input);
+  payload.losses = $("flow-loss-input")?.value?.trim() || "Unknown";
+
+  try {
+    const result = await fetchJSON("/api/report/generate-ai", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    state.reports = result;
+    renderReportsPhase(result);
+
+    if (result.fallback) {
+      showReportModeBadge("Template (AI unavailable)", "warn");
+    } else {
+      showReportModeBadge("AI Generated", "success");
+    }
+  } catch (err) {
+    showToast("AI report generation failed. Using template.", "error");
+    // Fall back to template
+    if (state.templateReports) {
+      renderReportsPhase(state.templateReports);
+      showReportModeBadge("Template (fallback)", "warn");
+    }
+  }
+}
+
+function showReportModeBadge(text, type) {
+  const badge = $("report-mode-badge");
+  if (!badge) return;
+  badge.textContent = text;
+  badge.className = `report-mode-badge ${type ? `report-mode-badge--${type}` : ""}`;
+  badge.classList.remove("hidden");
 }
 
 /* ── Utilities ── */
@@ -579,11 +822,18 @@ async function generateRecoveryKit(verdict) {
     renderRecoveryChecklist(state.recoveryTasks);
   }
 
-  // STEP 2: Reports
+  // STEP 2: Reports (template first, then try AI)
   if (reportResult.status === "fulfilled") {
+    state.templateReports = reportResult.value;
     state.reports = reportResult.value;
     renderReportsPhase(reportResult.value);
     await revealPhaseAnimated("phase-reports", 200);
+
+    // Auto-try AI reports in background (upgrade from template)
+    generateAiReports().catch(() => {
+      // AI failed silently — template already shown
+      showReportModeBadge("Template", "");
+    });
   } else {
     // Show reports section with error state
     show("phase-reports");
@@ -800,6 +1050,206 @@ function initReportRegeneration() {
       showToast(err.message, "error");
     } finally {
       btn.disabled = false;
+    }
+  });
+}
+
+/* ── PDF Export for Reports ── */
+
+function initPdfExport() {
+  const btn = $("flow-export-pdf");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    if (!state.reports || !state.verdict) {
+      showToast("No reports to export. Generate reports first.", "error");
+      return;
+    }
+
+    const reportPayload = buildReportPayloadFromVerdict(state.verdict, state.input);
+    reportPayload.losses = $("flow-loss-input")?.value?.trim() || "Unknown";
+
+    const pdfPayload = {
+      ...reportPayload,
+      severitySuggestion: state.reports.severitySuggestion || "medium",
+      forBank: state.reports.forBank,
+      forPolice: state.reports.forPolice,
+      forPlatform: state.reports.forPlatform,
+    };
+
+    btn.disabled = true;
+    const btnText = btn.querySelector("span");
+    const originalText = btnText?.textContent;
+    if (btnText) btnText.textContent = "Generating...";
+
+    try {
+      const response = await fetch("/api/report/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pdfPayload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "PDF generation failed" }));
+        throw new Error(err.error || "PDF generation failed");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ScamShield-Report-${Date.now().toString(36)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("PDF report downloaded.");
+    } catch (err) {
+      showToast(err.message || "PDF export failed", "error");
+    } finally {
+      btn.disabled = false;
+      if (btnText) btnText.textContent = originalText;
+    }
+  });
+}
+
+/* ── Warning Card Customization ── */
+
+function initWarningCardCustomization() {
+  const customizeState = {
+    theme: "auto",
+    language: "en",
+    headline: "",
+    footerText: "",
+    showIdentifiers: true,
+  };
+
+  // Theme picker
+  const themePicker = $("customize-theme-picker");
+  if (themePicker) {
+    themePicker.addEventListener("click", (e) => {
+      const swatch = e.target.closest("[data-theme]");
+      if (!swatch) return;
+      customizeState.theme = swatch.dataset.theme;
+      themePicker.querySelectorAll(".theme-swatch").forEach(s => s.classList.remove("theme-swatch--active"));
+      swatch.classList.add("theme-swatch--active");
+    });
+  }
+
+  // Language picker
+  const langPicker = $("customize-lang-picker");
+  if (langPicker) {
+    langPicker.addEventListener("click", (e) => {
+      const option = e.target.closest("[data-lang]");
+      if (!option) return;
+      customizeState.language = option.dataset.lang;
+      langPicker.querySelectorAll(".lang-option").forEach(o => o.classList.remove("lang-option--active"));
+      option.classList.add("lang-option--active");
+    });
+  }
+
+  // Identifier toggle
+  const idToggle = $("customize-show-identifiers");
+  if (idToggle) {
+    idToggle.addEventListener("change", () => {
+      customizeState.showIdentifiers = idToggle.checked;
+    });
+  }
+
+  function getCustomPayload() {
+    if (!state.warningCard || !state.verdict) return null;
+
+    const headlineInput = $("customize-headline")?.value?.trim();
+    const footerInput = $("customize-footer")?.value?.trim();
+
+    const warningBase = buildWarningPayloadFromVerdict(state.verdict, state.input);
+
+    return {
+      verdict: warningBase.verdict,
+      headline: headlineInput || warningBase.headline,
+      identifiers: warningBase.identifiers,
+      reasons: warningBase.reasons,
+      theme: customizeState.theme,
+      language: customizeState.language,
+      footerText: footerInput || undefined,
+      showIdentifiers: customizeState.showIdentifiers,
+    };
+  }
+
+  // Preview (SVG only, no save)
+  $("customize-preview-btn")?.addEventListener("click", async () => {
+    const payload = getCustomPayload();
+    if (!payload) {
+      showToast("No warning card data available.", "error");
+      return;
+    }
+
+    const btn = $("customize-preview-btn");
+    btn.disabled = true;
+
+    try {
+      const response = await fetch("/api/warning-card/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error("Preview failed");
+
+      const svgText = await response.text();
+      const blob = new Blob([svgText], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+
+      const preview = $("flow-warning-preview");
+      if (preview) {
+        preview.src = url;
+        // Clean up old blob URL after load
+        preview.onload = () => {
+          if (preview._prevBlobUrl) URL.revokeObjectURL(preview._prevBlobUrl);
+          preview._prevBlobUrl = url;
+        };
+      }
+      showToast("Preview updated.");
+    } catch (err) {
+      showToast(err.message || "Preview failed", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // Apply & Regenerate (saves to R2 + DB)
+  $("customize-apply-btn")?.addEventListener("click", async () => {
+    const payload = getCustomPayload();
+    if (!payload) {
+      showToast("No warning card data available.", "error");
+      return;
+    }
+
+    const btn = $("customize-apply-btn");
+    btn.disabled = true;
+    const btnText = btn.querySelector("span");
+    const originalText = btnText?.textContent;
+    if (btnText) btnText.textContent = "Generating...";
+
+    try {
+      const result = await fetchJSON("/api/warning-card/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      state.warningCard = result;
+      renderSharePhase(result, state.verdict);
+      showToast("Custom warning card generated!");
+
+      // Close the panel
+      const panel = $("warning-customize-panel");
+      if (panel) panel.open = false;
+    } catch (err) {
+      showToast(err.message || "Customization failed", "error");
+    } finally {
+      btn.disabled = false;
+      if (btnText) btnText.textContent = originalText;
     }
   });
 }
@@ -1135,12 +1585,17 @@ async function boot() {
   document.addEventListener("DOMContentLoaded", () => {
     initAuth();
     initLocalization();
+    initModeToggle();
+    initInlineAiChat();
+    initReportModeToggle();
     initOfflineDetection();
     initVisuals();
     initRipples();
     initAutoDetect();
     initReportTabs();
     initReportRegeneration();
+    initPdfExport();
+    initWarningCardCustomization();
     initShareButtons();
     initAiDrawer();
     initCheckAnother();

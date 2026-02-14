@@ -25,34 +25,38 @@ interface CardPalette {
   accent: string;
 }
 
-function cardPalette(verdict: WarningCardPayload["verdict"]): CardPalette {
-  if (verdict === "HIGH_RISK") {
-    return {
-      bgStart: "#220B0B",
-      bgEnd: "#451313",
-      border: "#FCA5A5",
-      badgeBg: "#B91C1C",
-      badgeText: "#FEE2E2",
-      panelBg: "rgba(127, 29, 29, 0.34)",
-      panelStroke: "rgba(254, 202, 202, 0.35)",
-      accent: "#F97316",
-    };
-  }
-
-  if (verdict === "LEGIT") {
-    return {
-      bgStart: "#0A2E1F",
-      bgEnd: "#0C4A35",
-      border: "#86EFAC",
-      badgeBg: "#166534",
-      badgeText: "#DCFCE7",
-      panelBg: "rgba(6, 78, 59, 0.34)",
-      panelStroke: "rgba(167, 243, 208, 0.34)",
-      accent: "#10B981",
-    };
-  }
-
-  return {
+const THEME_PALETTES: Record<string, CardPalette> = {
+  danger: {
+    bgStart: "#220B0B",
+    bgEnd: "#451313",
+    border: "#FCA5A5",
+    badgeBg: "#B91C1C",
+    badgeText: "#FEE2E2",
+    panelBg: "rgba(127, 29, 29, 0.34)",
+    panelStroke: "rgba(254, 202, 202, 0.35)",
+    accent: "#F97316",
+  },
+  caution: {
+    bgStart: "#271700",
+    bgEnd: "#422A08",
+    border: "#FDBA74",
+    badgeBg: "#9A3412",
+    badgeText: "#FFF7ED",
+    panelBg: "rgba(120, 53, 15, 0.34)",
+    panelStroke: "rgba(253, 186, 116, 0.35)",
+    accent: "#F59E0B",
+  },
+  safe: {
+    bgStart: "#0A2E1F",
+    bgEnd: "#0C4A35",
+    border: "#86EFAC",
+    badgeBg: "#166534",
+    badgeText: "#DCFCE7",
+    panelBg: "rgba(6, 78, 59, 0.34)",
+    panelStroke: "rgba(167, 243, 208, 0.34)",
+    accent: "#10B981",
+  },
+  neutral: {
     bgStart: "#0F172A",
     bgEnd: "#1E293B",
     border: "#93C5FD",
@@ -61,7 +65,23 @@ function cardPalette(verdict: WarningCardPayload["verdict"]): CardPalette {
     panelBg: "rgba(15, 23, 42, 0.34)",
     panelStroke: "rgba(148, 163, 184, 0.35)",
     accent: "#0EA5E9",
-  };
+  },
+};
+
+function cardPalette(verdict: WarningCardPayload["verdict"], themeOverride?: string): CardPalette {
+  if (themeOverride && THEME_PALETTES[themeOverride]) {
+    return THEME_PALETTES[themeOverride];
+  }
+
+  if (verdict === "HIGH_RISK") {
+    return THEME_PALETTES.danger;
+  }
+
+  if (verdict === "LEGIT") {
+    return THEME_PALETTES.safe;
+  }
+
+  return THEME_PALETTES.neutral;
 }
 
 function escapeXml(text: string): string {
@@ -123,7 +143,16 @@ function wrapText(text: string, maxChars: number, maxLines: number): string[] {
   return lines;
 }
 
-function verdictSummary(verdict: WarningCardPayload["verdict"]): string {
+const VERDICT_SUMMARY_BM: Record<string, string> = {
+  HIGH_RISK: "Eskalasi sekarang. Bekukan pemindahan & buat laporan segera.",
+  LEGIT: "Tiada isyarat risiko tinggi. Teruskan pengesahan.",
+  UNKNOWN: "Isyarat tidak konklusif. Anggap belum disahkan & kongsi notis amaran.",
+};
+
+function verdictSummary(verdict: WarningCardPayload["verdict"], language = "en"): string {
+  if (language === "bm") {
+    return VERDICT_SUMMARY_BM[verdict] ?? VERDICT_SUMMARY_BM.UNKNOWN;
+  }
   if (verdict === "HIGH_RISK") {
     return "Escalate now. Freeze transfers and report immediately.";
   }
@@ -134,10 +163,18 @@ function verdictSummary(verdict: WarningCardPayload["verdict"]): string {
 }
 
 export function renderWarningCardSvg(payload: WarningCardPayload): string {
-  const palette = cardPalette(payload.verdict);
+  const custom = payload.customization;
+  const palette = cardPalette(payload.verdict, custom?.theme);
+  const lang = custom?.language ?? "en";
   const timestamp = new Date().toISOString().replace("T", " ").slice(0, 16);
   const headlineLines = wrapText(payload.headline, 38, 2);
-  const summary = escapeXml(verdictSummary(payload.verdict));
+  const summary = escapeXml(verdictSummary(payload.verdict, lang));
+  const bulletinLabel = lang === "bm" ? "BULETIN AMARAN KOMUNITI" : "COMMUNITY WARNING BULLETIN";
+  const footerLine = custom?.footerText
+    ? escapeXml(truncate(custom.footerText, 90))
+    : lang === "bm"
+      ? "Gunakan halaman amaran yang dipaut untuk melaporkan, memelihara bukti dan menyelaras pembendungan."
+      : "Use the linked warning page to report, preserve evidence, and coordinate containment.";
 
   const identifierRows = Object.entries(payload.identifiers)
     .slice(0, 3)
@@ -185,7 +222,7 @@ export function renderWarningCardSvg(payload: WarningCardPayload): string {
   <line x1="24" y1="102" x2="1176" y2="102" stroke="rgba(226,232,240,0.14)" stroke-width="2"/>
 
   <text x="56" y="72" fill="#E2E8F0" font-size="22" font-weight="700" font-family="'Chakra Petch','Arial',sans-serif" letter-spacing="1">SCAMSHIELD MY</text>
-  <text x="272" y="72" fill="#94A3B8" font-size="16" font-weight="500" font-family="'DM Sans','Arial',sans-serif" letter-spacing="1.2">COMMUNITY WARNING BULLETIN</text>
+  <text x="272" y="72" fill="#94A3B8" font-size="16" font-weight="500" font-family="'DM Sans','Arial',sans-serif" letter-spacing="1.2">${bulletinLabel}</text>
   <text x="848" y="72" fill="#CBD5E1" font-size="14" font-family="'DM Sans','Arial',sans-serif">Generated ${timestamp} UTC</text>
 
   <rect x="56" y="124" width="228" height="62" rx="31" fill="${palette.badgeBg}" stroke="rgba(248,250,252,0.28)" stroke-width="2"/>
@@ -204,7 +241,7 @@ export function renderWarningCardSvg(payload: WarningCardPayload): string {
   ${reasons}
 
   <line x1="24" y1="578" x2="1176" y2="578" stroke="rgba(226,232,240,0.14)" stroke-width="2"/>
-  <text x="56" y="604" fill="#CBD5E1" font-size="14" font-family="'DM Sans','Arial',sans-serif">Use the linked warning page to report, preserve evidence, and coordinate containment.</text>
+  <text x="56" y="604" fill="#CBD5E1" font-size="14" font-family="'DM Sans','Arial',sans-serif">${footerLine}</text>
   <text x="1032" y="604" fill="#E2E8F0" font-size="16" font-weight="700" font-family="'Chakra Petch','Arial',sans-serif">ScamShield MY</text>
 </svg>`;
 }

@@ -127,6 +127,22 @@
                         <span class="dash-mini-stat-value" id="admin-warnings">0</span>
                         <span class="dash-mini-stat-label">Warning Pages</span>
                     </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-total-points">0</span>
+                        <span class="dash-mini-stat-label">Points Issued</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-premium-users">0</span>
+                        <span class="dash-mini-stat-label">Premium Users</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-open-bounties">0</span>
+                        <span class="dash-mini-stat-label">Open Bounties</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-pending-prizes">0</span>
+                        <span class="dash-mini-stat-label">Pending Prizes</span>
+                    </div>
                 </div>
             </section>
 
@@ -151,6 +167,102 @@
                             </tr>
                         </thead>
                         <tbody id="admin-heatmap-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Leaderboard -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">04</span>
+                    <div>
+                        <h2>Community Leaderboard</h2>
+                        <p class="section-subtitle">Top contributors by points</p>
+                    </div>
+                </div>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>User</th>
+                                <th class="th-count">Points</th>
+                                <th class="th-count">Streak</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-leaderboard-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Bounties -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">05</span>
+                    <div>
+                        <h2>Bounty Queue</h2>
+                        <p class="section-subtitle">High-value target tasks</p>
+                    </div>
+                </div>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>Target</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th class="th-count">Reward</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-bounties-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Cash Prizes -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">06</span>
+                    <div>
+                        <h2>Cash Prize Pipeline</h2>
+                        <p class="section-subtitle">Real payout distribution tracking</p>
+                    </div>
+                </div>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Status</th>
+                                <th class="th-count">Amount</th>
+                                <th>Partner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-prizes-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Brand Partnerships -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">07</span>
+                    <div>
+                        <h2>Brand Partnerships</h2>
+                        <p class="section-subtitle">Sponsors and prize contributors</p>
+                    </div>
+                </div>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>Brand</th>
+                                <th>Prize Type</th>
+                                <th>Status</th>
+                                <th class="th-count">Contribution</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-partnerships-body"></tbody>
                     </table>
                 </div>
             </section>

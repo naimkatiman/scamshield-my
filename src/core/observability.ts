@@ -2,8 +2,8 @@ import type { Env } from "../types";
 import { logger } from "./logger";
 
 type ProviderOutcome = "ok" | "error" | "circuit_open";
-type CureAction = "playbook_accessed" | "report_generated" | "progress_tracked" | "report_submitted" | "warning_card_created";
-type CureActionStatus = "success" | "validation_error" | "failed";
+type CureAction = "playbook_accessed" | "report_generated" | "ai_report_generated" | "progress_tracked" | "report_submitted" | "warning_card_created" | "report_pdf_exported" | "warning_card_customized";
+type CureActionStatus = "success" | "validation_error" | "failed" | "fallback";
 
 function trimValue(value: string, max = 128): string {
   if (value.length <= max) {

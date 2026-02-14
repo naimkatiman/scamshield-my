@@ -96,10 +96,158 @@
                 </div>
             </section>
 
-            <!-- History Card -->
+            <!-- Gamification Card -->
             <section class="card">
                 <div class="section-header">
                     <span class="section-number">02</span>
+                    <div>
+                        <h2>Impact Points</h2>
+                        <p class="section-subtitle">Progress, streak, and premium unlock status</p>
+                    </div>
+                </div>
+
+                <div class="dash-stats-row dash-stats-row--compact">
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="dash-points">0</span>
+                        <span class="dash-mini-stat-label">Total Points</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="dash-streak">0</span>
+                        <span class="dash-mini-stat-label">Current Streak</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="dash-reports-count">0</span>
+                        <span class="dash-mini-stat-label">Reports</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="dash-premium-status">Locked</span>
+                        <span class="dash-mini-stat-label">Premium</span>
+                    </div>
+                </div>
+
+                <p id="dash-premium-copy" class="dash-subtle-text">—</p>
+                <div id="dash-premium-features" class="dash-pill-row"></div>
+            </section>
+
+            <!-- Achievements -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">03</span>
+                    <div>
+                        <h2>Achievement Badges</h2>
+                        <p class="section-subtitle">Unlocked from report milestones</p>
+                    </div>
+                </div>
+
+                <div id="dash-achievements-empty" class="dash-empty hidden">
+                    <p>No badges yet. Submit reports to unlock milestones.</p>
+                </div>
+                <ul id="dash-achievements-list" class="dash-achievements-list"></ul>
+            </section>
+
+            <!-- Referrals -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">04</span>
+                    <div>
+                        <h2>Referral Program</h2>
+                        <p class="section-subtitle">Invite others and earn points</p>
+                    </div>
+                </div>
+
+                <div class="dash-inline-kv">
+                    <span class="dash-inline-label">Your Code</span>
+                    <code id="dash-referral-code" class="dash-referral-code">—</code>
+                </div>
+
+                <div class="dash-stats-row dash-stats-row--compact">
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="dash-referral-count">0</span>
+                        <span class="dash-mini-stat-label">Referrals</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="dash-referral-points">0</span>
+                        <span class="dash-mini-stat-label">Points Earned</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Monthly Competition -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">05</span>
+                    <div>
+                        <h2>Monthly Competition</h2>
+                        <p class="section-subtitle" id="dash-competition-subtitle">—</p>
+                    </div>
+                </div>
+
+                <h3 id="dash-competition-name" class="dash-card-title">—</h3>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th class="th-count">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-competition-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Open Bounties -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">06</span>
+                    <div>
+                        <h2>Open Bounties</h2>
+                        <p class="section-subtitle">High-value targets with point rewards</p>
+                    </div>
+                </div>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>Target</th>
+                                <th>Priority</th>
+                                <th class="th-count">Reward</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-bounties-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Cash Prizes -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">07</span>
+                    <div>
+                        <h2>Cash Prize Tracking</h2>
+                        <p class="section-subtitle">Long-term reward distribution pipeline</p>
+                    </div>
+                </div>
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Partner</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-prizes-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- History Card -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">08</span>
                     <div>
                         <h2>Recent Activity</h2>
                         <p class="section-subtitle">Your last 30 actions</p>
