@@ -1,0 +1,30 @@
+# Local-only variables for `wrangler dev`.
+# Copy to `.dev.vars` and fill real values. Never commit `.dev.vars`.
+
+APP_NAME="ScamShield MY"
+REGION="MY"
+PROVIDER_MODE="mock"
+WARNING_CARD_RENDER_MODE="svg"
+
+# Comma-separated admin allowlist used during login promotion.
+ADMIN_EMAILS="admin@example.com"
+
+# Google OAuth
+GOOGLE_CLIENT_ID="TODO_GOOGLE_CLIENT_ID"
+GOOGLE_CLIENT_SECRET="TODO_GOOGLE_CLIENT_SECRET"
+GOOGLE_REDIRECT_URI="http://127.0.0.1:8787/api/auth/callback"
+
+# Session signing
+JWT_SECRET="TODO_RANDOM_64_BYTE_SECRET"
+
+# AI provider
+OPENROUTER_API_KEY="TODO_OPENROUTER_API_KEY"
+
+# Cloudflare Browser Rendering (needed for PDF export and PNG warning cards)
+BROWSER_RENDERING_ACCOUNT_ID="TODO_CF_ACCOUNT_ID"
+CF_BROWSER_RENDERING_TOKEN="TODO_CF_BROWSER_RENDERING_TOKEN"
+
+# Optional provider keys
+COINGECKO_API_KEY=""
+GOPLUS_APP_KEY=""
+GOPLUS_APP_SECRET=""

@@ -456,15 +456,16 @@ function initRipples() {
 function detectInputType(value) {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (/^0x[a-fA-F0-9]{40,}$/.test(trimmed)) {
-    return trimmed.length > 42 ? "contract" : "wallet";
+  if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+    return "wallet";
+  }
+  if (/^0x[a-fA-F0-9]{41,}$/.test(trimmed)) {
+    return "contract";
   }
   if (/^@/.test(trimmed) || /^https?:\/\/(t\.me|wa\.me|instagram\.com)/i.test(trimmed)) {
     return "handle";
   }
-  if (/^0x[a-fA-F0-9]+$/.test(trimmed)) {
-    return "contract";
-  }
+  // Don't default to handle for unknown inputs - let backend handle it
   return null;
 }
 
@@ -669,9 +670,14 @@ async function onFlowSubmit(event) {
 
   // Detect input type
   const detected = detectInputType(rawInput);
+  if (!detected) {
+    showToast("Please enter a valid wallet address (0x...), contract address, or social handle (@username, t.me/, etc.)", "error");
+    return;
+  }
+  
   state.input = {
     raw: rawInput,
-    type: detected || "handle",
+    type: detected,
     value: rawInput,
     chain: (detected === "contract" || detected === "wallet") ? "eth" : "",
   };

@@ -101,10 +101,19 @@ export async function exchangeGoogleCode(code: string, env: Env): Promise<Google
 
 // ── D1 user management ──
 
-const ADMIN_EMAILS = ["naimkatiman@gmail.com"];
+function parseAdminEmails(rawList: string | undefined): Set<string> {
+    if (!rawList) return new Set();
+    return new Set(
+        rawList
+            .split(",")
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean),
+    );
+}
 
-export async function findOrCreateUser(db: D1Database, email: string): Promise<User> {
-    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+export async function findOrCreateUser(db: D1Database, email: string, env: Env): Promise<User> {
+    const adminEmails = parseAdminEmails(env.ADMIN_EMAILS);
+    const isAdmin = adminEmails.has(email.toLowerCase());
     const existing = await db.prepare("SELECT * FROM users WHERE email = ?").bind(email).first<User>();
     if (existing) {
         // Promote to admin if email is in admin list but role isn't set yet
@@ -125,13 +134,35 @@ export async function findOrCreateUser(db: D1Database, email: string): Promise<U
 
 // ── Usage quota ──
 
-export async function getUsageToday(db: D1Database, userId: string | null, ip: string): Promise<number> {
+export async function getUsageToday(
+    db: D1Database,
+    userId: string | null,
+    ip: string,
+    action?: string,
+): Promise<number> {
     const day = new Date().toISOString().slice(0, 10);
     if (userId) {
+        if (action) {
+            const row = await db.prepare(
+                "SELECT COUNT(*) as cnt FROM usage_logs WHERE user_id = ? AND day = ? AND action = ?",
+            )
+                .bind(userId, day, action).first<{ cnt: number }>();
+            return row?.cnt ?? 0;
+        }
+
         const row = await db.prepare("SELECT COUNT(*) as cnt FROM usage_logs WHERE user_id = ? AND day = ?")
             .bind(userId, day).first<{ cnt: number }>();
         return row?.cnt ?? 0;
     }
+
+    if (action) {
+        const row = await db.prepare(
+            "SELECT COUNT(*) as cnt FROM usage_logs WHERE user_id IS NULL AND ip = ? AND day = ? AND action = ?",
+        )
+            .bind(ip, day, action).first<{ cnt: number }>();
+        return row?.cnt ?? 0;
+    }
+
     const row = await db.prepare("SELECT COUNT(*) as cnt FROM usage_logs WHERE user_id IS NULL AND ip = ? AND day = ?")
         .bind(ip, day).first<{ cnt: number }>();
     return row?.cnt ?? 0;

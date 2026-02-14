@@ -101,6 +101,7 @@ export interface Env {
   ASSETS: Fetcher;
   APP_NAME: string;
   REGION: string;
+  ADMIN_EMAILS?: string;
   PROVIDER_MODE?: "mock" | "live";
   WARNING_CARD_RENDER_MODE?: "png" | "svg";
   BROWSER_RENDERING_ACCOUNT_ID?: string;

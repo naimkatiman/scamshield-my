@@ -1,0 +1,64 @@
+name = "scamshield-my"
+main = "src/index.ts"
+compatibility_date = "2025-12-01"
+workers_dev = true
+
+[observability]
+enabled = true
+head_sampling_rate = 0.2
+
+[vars]
+APP_NAME = "ScamShield MY"
+REGION = "MY"
+PROVIDER_MODE = "mock"
+WARNING_CARD_RENDER_MODE = "svg"
+GOOGLE_CLIENT_ID = "TODO_GOOGLE_CLIENT_ID"
+GOOGLE_REDIRECT_URI = "TODO_GOOGLE_REDIRECT_URI"
+BROWSER_RENDERING_ACCOUNT_ID = "TODO_CF_ACCOUNT_ID"
+ADMIN_EMAILS = "admin@example.com"
+
+# Sensitive values must be provisioned as Worker secrets (never commit real values):
+# - JWT_SECRET
+# - GOOGLE_CLIENT_SECRET
+# - OPENROUTER_API_KEY
+# - CF_BROWSER_RENDERING_TOKEN
+# - GOPLUS_APP_KEY
+# - GOPLUS_APP_SECRET
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Replace all TODO_DEPLOY_* values before deploying.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "scamshield_d1"
+database_id = "TODO_DEPLOY_D1_DATABASE_ID"
+
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "TODO_DEPLOY_CACHE_KV_ID"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "TODO_DEPLOY_RATE_LIMIT_KV_ID"
+
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "TODO_DEPLOY_R2_BUCKET"
+
+[[queues.producers]]
+binding = "ENRICHMENT_QUEUE"
+queue = "TODO_DEPLOY_QUEUE_NAME"
+
+[[queues.consumers]]
+queue = "TODO_DEPLOY_QUEUE_NAME"
+max_batch_size = 5
+
+[[analytics_engine_datasets]]
+binding = "SCAMSHIELD_METRICS"
+dataset = "TODO_DEPLOY_ANALYTICS_DATASET"
+
+[triggers]
+crons = ["0 1 * * *"]

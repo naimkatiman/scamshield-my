@@ -2001,6 +2001,50 @@ textarea {
   animation: fadeSlideIn 0.45s ease 0.35s both;
 }
 
+.powered-by {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.powered-by-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.powered-by-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+}
+
+.powered-by-item {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--border-light);
+  background: var(--official-card-alt);
+  transition: all 0.2s ease;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+a.powered-by-item:hover {
+  color: var(--brand-primary);
+  border-color: var(--border);
+  background: var(--official-card);
+}
+
 .footer .legal-line {
   background: none;
   border-left: none;

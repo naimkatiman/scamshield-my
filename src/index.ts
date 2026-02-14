@@ -524,12 +524,26 @@ app.use("*", async (c, next) => {
   const ip = c.req.header("cf-connecting-ip") ?? "unknown";
   const limit = path === "/api/verdict" ? 40 : 80;
   const result = await checkRateLimit(c.env.RATE_LIMIT_KV, `rl:${path}:${ip}`, limit, 60);
+  const resetIso = new Date(result.resetAt).toISOString();
+  const remaining = Math.max(0, result.remaining);
+  const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
   if (!result.allowed) {
-    return jsonError("Too many requests. Please wait a minute and retry.", 429);
+    return new Response(JSON.stringify({ error: "Too many requests. Please wait a minute and retry." }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Retry-After": retryAfter.toString(),
+        "X-RateLimit-Limit": limit.toString(),
+        "X-RateLimit-Remaining": remaining.toString(),
+        "X-RateLimit-Reset": resetIso,
+      },
+    });
   }
 
-  c.header("X-RateLimit-Remaining", result.remaining.toString());
-  c.header("X-RateLimit-Reset", new Date(result.resetAt).toISOString());
+  c.header("X-RateLimit-Limit", limit.toString());
+  c.header("X-RateLimit-Remaining", remaining.toString());
+  c.header("X-RateLimit-Reset", resetIso);
   return next();
 });
 
@@ -574,7 +588,7 @@ app.get("/api/auth/callback", async (c) => {
   const googleUser = await exchangeGoogleCode(code, c.env);
   if (!googleUser) return jsonError("Google authentication failed.", 401);
 
-  const user = await findOrCreateUser(c.env.DB, googleUser.email);
+  const user = await findOrCreateUser(c.env.DB, googleUser.email, c.env);
   await ensureGamificationProfile(c.env.DB, user.id).catch(() => { });
   const session: Session = {
     userId: user.id,
@@ -1327,23 +1341,22 @@ app.post("/api/ai/chat", async (c) => {
     return jsonError("AI chat is not configured.", 503);
   }
 
+  const parsed = aiChatSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return jsonError("Invalid chat payload.");
+  }
+
   // ── Daily quota enforcement for AI chat ──
   const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
   const ip = c.req.header("cf-connecting-ip") ?? "unknown";
   const userId = session?.userId ?? null;
   const dailyLimit = session ? DAILY_LIMIT_LOGIN : DAILY_LIMIT_FREE;
-  const chatUsed = await getUsageToday(c.env.DB, userId, ip);
+  const chatUsed = await getUsageToday(c.env.DB, userId, ip, "ai_chat");
   if (chatUsed >= dailyLimit) {
     const msg = session
       ? `Daily limit of ${dailyLimit} requests reached. Resets at midnight UTC.`
       : `Free tier limit of ${dailyLimit} requests reached. Sign in for ${DAILY_LIMIT_LOGIN} daily.`;
     return jsonError(msg, 429);
-  }
-  await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
-
-  const parsed = aiChatSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    return jsonError("Invalid chat payload.");
   }
 
   const messages = [
@@ -1376,6 +1389,7 @@ app.post("/api/ai/chat", async (c) => {
 
   const data = await response.json() as { choices?: { message?: { content?: string } }[] };
   const message = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
+  await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
 
   return c.json({ message });
 });
