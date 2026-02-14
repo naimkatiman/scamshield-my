@@ -2,69 +2,114 @@ import { Hono } from "hono";
 import { z } from "zod";
 import {
   auditEvent,
-  createCommunityReport,
   createWarningPage,
   getDashboardStats,
   getHeatmapGrid,
   getRecentReports,
   getWarningPage,
   rollupHeatmap,
-  upsertPattern,
 } from "./db/repository";
 import {
-  applyReferralCode,
-  claimBounty,
-  completeBounty,
-  createBounty,
-  createBrandPartnership,
-  createCashPrize,
-  ensureGamificationProfile,
-  finalizeMonthlyCompetition,
-  getCompetitionMonthKey,
   getGamificationAdminSnapshot,
   getGamificationProfile,
-  getLeaderboard,
   getMonthlyCompetitionOverview,
   getReferralSummary,
-  grantReportSubmissionRewards,
   listBounties,
   listBrandPartnerships,
   listCashPrizes,
-  seedFirstMonthlyBounties,
-  seedFirstMonthlyCompetition,
   rewardWarningCardCreation,
   touchDailyStreak,
-  upsertMonthlyCompetition,
-  updateCashPrizeStatus,
 } from "./db/gamification";
 import { checkRateLimit } from "./core/rateLimit";
 import { logger } from "./core/logger";
 import { KILLER_PITCH_LINE, calculateRecoveryProgress, emergencyPlaybook, recoveryTasks } from "./core/playbook";
 import { recordCureAction } from "./core/observability";
-import { generateIncidentReports } from "./core/reportGenerator";
 import { renderReportPdf } from "./core/reportPdf";
 import type { ReportPdfPayload } from "./core/reportPdf";
 import * as verdictService from "./core/verdictService";
 import { renderDashboardPage, renderReportsPage } from "./server/pages";
 import { generateSlug, renderWarningCardSvg, storeWarningCard } from "./core/warningCard";
-import { fingerprintFromIdentifiers, validateChain, validateInput, validateSlug } from "./core/validation";
+import { validateChain, validateInput, validateSlug } from "./core/validation";
+import { registerAuthRoutes } from "./routes/auth";
+import { registerGamificationRoutes } from "./routes/gamification";
+import { registerReportingRoutes } from "./routes/reporting";
 import {
-  buildSessionCookie,
-  createJWT,
   DAILY_LIMIT_FREE,
   DAILY_LIMIT_LOGIN,
-  exchangeGoogleCode,
-  findOrCreateUser,
-  getGoogleAuthURL,
   getSessionFromRequest,
   getUsageToday,
+  hasSessionCookie,
   recordUsage,
+  validateCsrfRequest,
 } from "./core/auth";
-import type { Env, QueueMessage, ReportRequest, Session, WarningCardPayload } from "./types";
+import type { Env, QueueMessage, WarningCardPayload } from "./types";
 
 const MAX_BODY_BYTES = 65_536; // 64 KB
 
 const app = new Hono<{ Bindings: Env }>();
+
+function parseCsvList(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseBooleanFlag(raw: string | undefined, fallback = false): boolean {
+  if (raw === undefined) return fallback;
+  const value = raw.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
+function resolveCorsOrigin(env: Env, reqUrl: URL, requestOrigin: string | null): string | null {
+  if (!requestOrigin) {
+    return null;
+  }
+
+  const allowed = new Set(parseCsvList(env.CORS_ALLOWED_ORIGINS));
+  // Same-origin is always allowed.
+  allowed.add(reqUrl.origin);
+
+  return allowed.has(requestOrigin) ? requestOrigin : null;
+}
+
+function setCorsHeaders(headers: Headers, origin: string | null): void {
+  headers.set("Vary", "Origin");
+  if (!origin) {
+    return;
+  }
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Credentials", "true");
+}
+
+function getOpenRouterModels(raw: string | undefined, fallback: readonly string[]): string[] {
+  const parsed = parseCsvList(raw);
+  return parsed.length > 0 ? parsed : [...fallback];
+}
+
+function isStrictAiMode(env: Env): boolean {
+  return parseBooleanFlag(env.AI_STRICT_MODE, (env.PROVIDER_MODE ?? "mock") === "live");
+}
+
+function hasUsableOpenRouterKey(rawKey: string | undefined): rawKey is string {
+  if (!rawKey) return false;
+  const key = rawKey.trim();
+  return key.length > 10 && !key.startsWith("TODO");
+}
+
+function isOpenRouterAuthFailure(status: number, body: string): boolean {
+  if (status === 401 || status === 403) return true;
+  if (status !== 502) return false;
+  return body.toLowerCase().includes("authenticate") || body.toLowerCase().includes("invalid");
+}
+
+const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_OPENROUTER_REFERER = "https://scamshield-my.m-naim.workers.dev";
+const DEFAULT_CHAT_MODELS = [
+  "google/gemini-3-flash-preview:online",
+  "google/gemini-2.5-flash:online",
+] as const;
 
 const boundedString = (maxLen: number) => z.string().max(maxLen);
 const boundedIdentifiers = z.record(
@@ -76,27 +121,6 @@ const verdictRequestSchema = z.object({
   type: z.enum(["contract", "wallet", "handle"]),
   value: z.string().min(1).max(256),
   chain: z.string().max(32).optional(),
-});
-
-const reportSchema = z.object({
-  reporterSession: z.string().min(8).max(64).regex(/^[a-zA-Z0-9_-]+$/, "Invalid session format."),
-  platform: z.string().min(1).max(64),
-  category: z.string().min(1).max(64),
-  severity: z.enum(["low", "medium", "high", "critical"]),
-  identifiers: boundedIdentifiers,
-  narrative: z.string().min(1).max(5000),
-  evidenceKeys: z.array(z.string().max(256)).max(20).default([]),
-});
-
-const reportGenerateSchema = z.object({
-  incidentTitle: z.string().min(3).max(256),
-  scamType: z.string().min(2).max(128),
-  occurredAt: z.string().min(3).max(128),
-  channel: z.string().min(2).max(128),
-  suspects: z.array(z.string().max(256)).max(20).default([]),
-  losses: z.string().max(128).default("Unknown"),
-  actionsTaken: z.array(z.string().max(512)).max(20).default([]),
-  extraNotes: boundedString(2000).optional(),
 });
 
 const reportExportPdfSchema = z.object({
@@ -136,79 +160,6 @@ const warningCardCustomizeSchema = z.object({
 
 const recoveryProgressSchema = z.object({
   completedTaskIds: z.array(z.string().max(64)).max(20),
-});
-
-const referralApplySchema = z.object({
-  code: z.string().min(4).max(32),
-});
-
-const bountyCreateSchema = z.object({
-  title: z.string().min(3).max(160),
-  description: z.string().min(10).max(2000),
-  targetIdentifier: z.string().min(3).max(256),
-  platform: z.string().min(2).max(64),
-  rewardPoints: z.number().int().min(1).max(10000).default(150),
-  priority: z.enum(["low", "medium", "high", "critical"]).default("high"),
-});
-
-const bountyCompleteSchema = z.object({
-  winnerUserId: z.string().min(10).max(64).optional(),
-});
-
-const monthlyCompetitionSchema = z.object({
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/),
-  name: z.string().min(3).max(160),
-  prizePoolCents: z.number().int().min(0).max(100_000_000),
-  currency: z.string().min(3).max(3).default("USD"),
-  sponsor: z.string().max(120).optional(),
-  status: z.enum(["active", "completed", "planned"]).default("active"),
-  rules: z.record(z.any()).optional(),
-});
-
-const monthlyCompetitionSeedSchema = z.object({
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/).optional(),
-  name: z.string().min(3).max(160).optional(),
-  prizePoolCents: z.number().int().min(0).max(100_000_000).optional(),
-  currency: z.string().min(3).max(3).optional(),
-  sponsor: z.string().max(120).nullable().optional(),
-  rules: z.record(z.any()).optional(),
-});
-
-const bountySeedSchema = z.object({
-  bounties: z.array(bountyCreateSchema).min(1).max(20).optional(),
-});
-
-const finalizeCompetitionSchema = z.object({
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/).optional(),
-  payoutCentsByRank: z.array(z.number().int().min(0).max(10_000_000)).min(1).max(10),
-  partnerName: z.string().max(120).optional(),
-});
-
-const cashPrizeCreateSchema = z.object({
-  userId: z.string().min(10).max(64),
-  competitionId: z.number().int().min(1).optional(),
-  amountCents: z.number().int().min(0).max(50_000_000),
-  currency: z.string().min(3).max(3).default("USD"),
-  partnerName: z.string().max(120).optional(),
-  status: z.enum(["pending", "approved", "paid", "cancelled"]).default("pending"),
-  payoutReference: z.string().max(256).optional(),
-  notes: z.string().max(2000).optional(),
-});
-
-const cashPrizeUpdateSchema = z.object({
-  status: z.enum(["pending", "approved", "paid", "cancelled"]),
-  payoutReference: z.string().max(256).optional(),
-  notes: z.string().max(2000).optional(),
-});
-
-const brandPartnershipSchema = z.object({
-  brandName: z.string().min(2).max(120),
-  contactEmail: z.string().email().optional(),
-  prizeType: z.string().min(3).max(160),
-  contributionCents: z.number().int().min(0).max(100_000_000).default(0),
-  currency: z.string().min(3).max(3).default("USD"),
-  status: z.enum(["pipeline", "active", "paused", "closed"]).default("pipeline"),
-  notes: z.string().max(2000).optional(),
 });
 
 function jsonError(message: string, status = 400) {
@@ -485,25 +436,39 @@ function buildWarningHtml(
 /* ------------------------------------------------------------------ */
 
 app.use("*", async (c, next) => {
-  const path = new URL(c.req.url).pathname;
+  const reqUrl = new URL(c.req.url);
+  const path = reqUrl.pathname;
   if (!path.startsWith("/api/")) {
     return next();
   }
 
+  const requestOrigin = c.req.header("origin") ?? null;
+  const allowedOrigin = resolveCorsOrigin(c.env, reqUrl, requestOrigin);
+
   // Handle CORS preflight
   if (c.req.method === "OPTIONS") {
+    if (requestOrigin && !allowedOrigin) {
+      return new Response(null, { status: 403 });
+    }
+
+    const headers = new Headers({
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, X-CSRF-Token",
+      "Access-Control-Max-Age": "86400",
+    });
+    setCorsHeaders(headers, allowedOrigin);
+
     return new Response(null, {
       status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Max-Age": "86400",
-      },
+      headers,
     });
   }
 
-  c.header("Access-Control-Allow-Origin", "*");
+  c.header("Vary", "Origin");
+  if (allowedOrigin) {
+    c.header("Access-Control-Allow-Origin", allowedOrigin);
+    c.header("Access-Control-Allow-Credentials", "true");
+  }
   return next();
 });
 
@@ -523,27 +488,64 @@ app.use("*", async (c, next) => {
 
   const ip = c.req.header("cf-connecting-ip") ?? "unknown";
   const limit = path === "/api/verdict" ? 40 : 80;
-  const result = await checkRateLimit(c.env.RATE_LIMIT_KV, `rl:${path}:${ip}`, limit, 60);
+  const result = await checkRateLimit(c.env.DB, `rl:${path}:${ip}`, limit, 60);
   const resetIso = new Date(result.resetAt).toISOString();
   const remaining = Math.max(0, result.remaining);
   const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
   if (!result.allowed) {
+    const headers = new Headers({
+      "Content-Type": "application/json",
+      "Retry-After": retryAfter.toString(),
+      "X-RateLimit-Limit": limit.toString(),
+      "X-RateLimit-Remaining": remaining.toString(),
+      "X-RateLimit-Reset": resetIso,
+      Vary: "Origin",
+    });
+
+    const reqUrl = new URL(c.req.url);
+    const requestOrigin = c.req.header("origin") ?? null;
+    const allowedOrigin = resolveCorsOrigin(c.env, reqUrl, requestOrigin);
+    setCorsHeaders(headers, allowedOrigin);
+
     return new Response(JSON.stringify({ error: "Too many requests. Please wait a minute and retry." }), {
       status: 429,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Retry-After": retryAfter.toString(),
-        "X-RateLimit-Limit": limit.toString(),
-        "X-RateLimit-Remaining": remaining.toString(),
-        "X-RateLimit-Reset": resetIso,
-      },
+      headers,
     });
   }
 
   c.header("X-RateLimit-Limit", limit.toString());
   c.header("X-RateLimit-Remaining", remaining.toString());
   c.header("X-RateLimit-Reset", resetIso);
+  return next();
+});
+
+const csrfExemptApiPaths = new Set<string>([
+  "/api/auth/login",
+  "/api/auth/callback",
+]);
+
+app.use("*", async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+  if (!path.startsWith("/api/")) {
+    return next();
+  }
+  if (csrfExemptApiPaths.has(path)) {
+    return next();
+  }
+
+  const method = c.req.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    return next();
+  }
+
+  if (!hasSessionCookie(c.req.raw)) {
+    return next();
+  }
+
+  if (!validateCsrfRequest(c.req.raw)) {
+    return jsonError("CSRF validation failed.", 403);
+  }
+
   return next();
 });
 
@@ -574,87 +576,7 @@ app.get("/api/health", (c) => {
   });
 });
 
-/* ─── Auth Routes (Google OAuth) ─── */
-
-app.get("/api/auth/login", (c) => {
-  const url = getGoogleAuthURL(c.env);
-  return c.redirect(url);
-});
-
-app.get("/api/auth/callback", async (c) => {
-  const code = c.req.query("code");
-  if (!code) return jsonError("Missing authorization code.", 400);
-
-  const googleUser = await exchangeGoogleCode(code, c.env);
-  if (!googleUser) return jsonError("Google authentication failed.", 401);
-
-  const user = await findOrCreateUser(c.env.DB, googleUser.email, c.env);
-  await ensureGamificationProfile(c.env.DB, user.id).catch(() => { });
-  const session: Session = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    exp: Math.floor(Date.now() / 1000) + 86400, // 24h
-  };
-
-  const token = await createJWT(session, c.env.JWT_SECRET);
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: "/app",
-      "Set-Cookie": buildSessionCookie(token),
-    },
-  });
-});
-
-app.get("/api/auth/me", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session) return c.json({ authenticated: false });
-
-  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-  const usedToday = await getUsageToday(c.env.DB, session.userId, ip);
-  const limit = DAILY_LIMIT_LOGIN;
-  const gamification = await getGamificationProfile(c.env.DB, session.userId).catch(() => null);
-
-  return c.json({
-    authenticated: true,
-    email: session.email,
-    role: session.role,
-    usage: { used: usedToday, limit, remaining: Math.max(0, limit - usedToday) },
-    gamification: gamification
-      ? {
-        totalPoints: gamification.totalPoints,
-        currentStreakDays: gamification.currentStreakDays,
-        premiumUnlocked: gamification.premiumUnlocked,
-      }
-      : null,
-  });
-});
-
-app.get("/api/auth/logout", (c) => {
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: "/app",
-      "Set-Cookie": "scamshield_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
-    },
-  });
-});
-
-app.get("/api/quota", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-  const userId = session?.userId ?? null;
-  const limit = session ? DAILY_LIMIT_LOGIN : DAILY_LIMIT_FREE;
-  const usedToday = await getUsageToday(c.env.DB, userId, ip);
-
-  return c.json({
-    authenticated: !!session,
-    limit,
-    used: usedToday,
-    remaining: Math.max(0, limit - usedToday),
-  });
-});
+registerAuthRoutes(app);
 
 app.get("/app", async (c) => {
   return c.env.ASSETS.fetch(new Request(new URL("/index.html", c.req.url)));
@@ -771,247 +693,7 @@ app.post("/api/verdict", async (c) => {
   });
 });
 
-app.post("/api/report", async (c) => {
-  const startedAt = Date.now();
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  const parsed = reportSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    recordCureAction(c.env, "report_submitted", "validation_error", Date.now() - startedAt, {
-      endpoint: "/api/report",
-    });
-    return jsonError("Invalid report payload.");
-  }
-
-  const normalizedIdentifiers = sortObjectEntries(parsed.data.identifiers);
-  const report: ReportRequest = {
-    ...parsed.data,
-    identifiers: normalizedIdentifiers,
-  };
-
-  try {
-    let rewardSummary: Awaited<ReturnType<typeof grantReportSubmissionRewards>> | null = null;
-    const reportId = await createCommunityReport(c.env.DB, report);
-    const fingerprint = fingerprintFromIdentifiers(normalizedIdentifiers);
-    await upsertPattern(c.env.DB, fingerprint, report.platform, report.category, JSON.stringify(normalizedIdentifiers));
-    await auditEvent(c.env.DB, "report_created", {
-      reportId,
-      platform: report.platform,
-      category: report.category,
-    });
-
-    if (session?.userId) {
-      rewardSummary = await grantReportSubmissionRewards(c.env.DB, session.userId, reportId).catch(() => null);
-    }
-
-    logger.info("report_created", { reportId, platform: report.platform, category: report.category });
-    recordCureAction(c.env, "report_submitted", "success", Date.now() - startedAt, {
-      severity: report.severity,
-      platform: report.platform,
-      category: report.category,
-    });
-
-    return c.json({
-      id: reportId,
-      status: "created",
-      containmentReady: true,
-      nextAction: "Generate warning card to contain spread",
-      rewards: rewardSummary
-        ? {
-          pointsAwarded: rewardSummary.reportPointsAwarded + rewardSummary.achievementBonusPoints + rewardSummary.streak.awardedPoints,
-          reportPoints: rewardSummary.reportPointsAwarded,
-          streakPoints: rewardSummary.streak.awardedPoints,
-          currentStreakDays: rewardSummary.profile.currentStreakDays,
-          unlockedAchievements: rewardSummary.unlockedAchievements,
-          totalPoints: rewardSummary.profile.totalPoints,
-          premiumUnlocked: rewardSummary.profile.premiumUnlocked,
-        }
-        : null,
-    });
-  } catch (error) {
-    logger.error("report_db_error", { message: error instanceof Error ? error.message : "unknown" });
-    recordCureAction(c.env, "report_submitted", "failed", Date.now() - startedAt, {
-      endpoint: "/api/report",
-    });
-    return jsonError("Report submission failed. Please try again.", 503);
-  }
-});
-
-app.post("/api/report/generate", async (c) => {
-  const startedAt = Date.now();
-  const parsed = reportGenerateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    recordCureAction(c.env, "report_generated", "validation_error", Date.now() - startedAt, {
-      endpoint: "/api/report/generate",
-    });
-    return jsonError("Invalid report generation payload.");
-  }
-
-  const generated = generateIncidentReports(parsed.data);
-  recordCureAction(c.env, "report_generated", "success", Date.now() - startedAt, {
-    endpoint: "/api/report/generate",
-    suspectsCount: parsed.data.suspects.length,
-    actionsCount: parsed.data.actionsTaken.length,
-  });
-  return c.json(generated);
-});
-
-app.post("/api/report/generate-ai", async (c) => {
-  const startedAt = Date.now();
-  const parsed = reportGenerateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    recordCureAction(c.env, "ai_report_generated", "validation_error", Date.now() - startedAt, {
-      endpoint: "/api/report/generate-ai",
-    });
-    return jsonError("Invalid report generation payload.");
-  }
-
-  const apiKey = c.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    // Fallback to template if AI is not configured
-    const generated = generateIncidentReports(parsed.data);
-    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
-      endpoint: "/api/report/generate-ai",
-      reason: "ai_not_configured",
-    });
-    return c.json({ ...generated, mode: "template", fallback: true });
-  }
-
-  // ── Daily quota enforcement ──
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-  const userId = session?.userId ?? null;
-  const dailyLimit = session ? DAILY_LIMIT_LOGIN : DAILY_LIMIT_FREE;
-  const usedToday = await getUsageToday(c.env.DB, userId, ip);
-  if (usedToday >= dailyLimit) {
-    // Fallback to template if quota exceeded
-    const generated = generateIncidentReports(parsed.data);
-    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
-      endpoint: "/api/report/generate-ai",
-      reason: "quota_exceeded",
-    });
-    return c.json({ ...generated, mode: "template", fallback: true });
-  }
-
-  const reportPrompt = `You are generating official incident reports for a Malaysian scam victim. Generate THREE separate reports based on the following incident details. Each report should be professional, detailed, and ready to copy-paste.
-
-INCIDENT DETAILS:
-- Title: ${parsed.data.incidentTitle}
-- Scam Type: ${parsed.data.scamType}
-- Occurred At: ${parsed.data.occurredAt}
-- Channel: ${parsed.data.channel}
-- Suspect Identifiers: ${parsed.data.suspects.join(", ") || "N/A"}
-- Estimated Loss: ${parsed.data.losses}
-- Actions Taken: ${parsed.data.actionsTaken.join("; ") || "None yet"}
-${parsed.data.extraNotes ? `- Additional Notes: ${parsed.data.extraNotes}` : ""}
-
-Generate exactly 3 reports in this JSON format (no markdown, no code blocks, just valid JSON):
-{
-  "forBank": "Full bank report text here...",
-  "forPolice": "Full police report text here...",
-  "forPlatform": "Full platform report text here..."
-}
-
-REQUIREMENTS:
-- Bank report: Address to fraud department, include transaction details, request immediate freeze, reference NSRC 997.
-- Police report: Formal tone for PDRM CCID filing, include timeline, evidence summary, reference semakmule.rmp.gov.my.
-- Platform report: Address to trust & safety team, include account identifiers, request suspension and log preservation.
-- All reports should use Malaysian context (MYR, Malaysian institutions, BNM, PDRM).
-- Include specific action requests in each report.
-- Keep each report between 200-400 words.`;
-
-  const reportModels: [string, string] = [
-    "google/gemini-3-flash-preview:online",
-    "google/gemini-2.5-flash:online",
-  ];
-
-  try {
-    let lastStatus = 0;
-    let data: { choices?: { message?: { content?: string } }[] } | null = null;
-
-    for (const model of reportModels) {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
-          "X-Title": "ScamShield MY",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: reportPrompt }],
-          stream: false,
-          max_tokens: 4096,
-          temperature: 0.3,
-        }),
-      });
-
-      if (response.ok) {
-        data = await response.json() as { choices?: { message?: { content?: string } }[] };
-        break;
-      }
-      lastStatus = response.status;
-      logger.warn("ai_report_upstream_error", { model, status: lastStatus });
-    }
-
-    if (!data) {
-      throw new Error(`AI API returned ${lastStatus}`);
-    }
-
-    const content = data.choices?.[0]?.message?.content || "";
-
-    // Parse the AI response - try to extract JSON
-    let aiReports: { forBank?: string; forPolice?: string; forPlatform?: string } = {};
-    try {
-      // Try to find JSON in the response (may be wrapped in markdown code blocks)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        aiReports = JSON.parse(jsonMatch[0]);
-      }
-    } catch {
-      // If parsing fails, fall back to template
-      logger.warn("ai_report_parse_failed", { contentLength: content.length });
-    }
-
-    if (aiReports.forBank && aiReports.forPolice && aiReports.forPlatform) {
-      await recordUsage(c.env.DB, userId, ip, "ai_report").catch(() => { });
-      recordCureAction(c.env, "ai_report_generated", "success", Date.now() - startedAt, {
-        endpoint: "/api/report/generate-ai",
-      });
-
-      // Calculate severity from input (reuse template logic)
-      const templateResult = generateIncidentReports(parsed.data);
-      return c.json({
-        severitySuggestion: templateResult.severitySuggestion,
-        timeline: templateResult.timeline,
-        identifiers: templateResult.identifiers,
-        category: parsed.data.scamType,
-        forBank: aiReports.forBank,
-        forPolice: aiReports.forPolice,
-        forPlatform: aiReports.forPlatform,
-        mode: "ai",
-        fallback: false,
-      });
-    }
-
-    // AI returned incomplete — fall back
-    const generated = generateIncidentReports(parsed.data);
-    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
-      endpoint: "/api/report/generate-ai",
-      reason: "incomplete_ai_response",
-    });
-    return c.json({ ...generated, mode: "template", fallback: true });
-
-  } catch (error) {
-    logger.error("ai_report_error", { message: error instanceof Error ? error.message : "unknown" });
-    // Fallback to template
-    const generated = generateIncidentReports(parsed.data);
-    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
-      endpoint: "/api/report/generate-ai",
-    });
-    return c.json({ ...generated, mode: "template", fallback: true });
-  }
-});
+registerReportingRoutes(app);
 
 app.post("/api/recovery-progress", async (c) => {
   const startedAt = Date.now();
@@ -1093,7 +775,15 @@ app.post("/api/warning-card", async (c) => {
     });
 
     if (session?.userId) {
-      rewardSummary = await rewardWarningCardCreation(c.env.DB, session.userId, slug, payload.verdict).catch(() => null);
+      const idempotencyKey = c.req.header("idempotency-key") ?? c.req.header("x-idempotency-key") ?? undefined;
+      rewardSummary = await rewardWarningCardCreation(
+        c.env.DB,
+        session.userId,
+        slug,
+        payload.verdict,
+        undefined,
+        idempotencyKey ? `warning_card:${idempotencyKey}` : undefined,
+      ).catch(() => null);
     }
 
     return c.json({
@@ -1245,7 +935,15 @@ app.post("/api/warning-card/customize", async (c) => {
     });
 
     if (session?.userId) {
-      rewardSummary = await rewardWarningCardCreation(c.env.DB, session.userId, slug, payload.verdict).catch(() => null);
+      const idempotencyKey = c.req.header("idempotency-key") ?? c.req.header("x-idempotency-key") ?? undefined;
+      rewardSummary = await rewardWarningCardCreation(
+        c.env.DB,
+        session.userId,
+        slug,
+        payload.verdict,
+        undefined,
+        idempotencyKey ? `warning_card_custom:${idempotencyKey}` : undefined,
+      ).catch(() => null);
     }
 
     return c.json({
@@ -1428,16 +1126,18 @@ function generateMockAiResponse(messages: { role: string; content: string }[]): 
 }
 
 app.post("/api/ai/chat", async (c) => {
-  const apiKey = c.env.OPENROUTER_API_KEY;
+  const apiKey = hasUsableOpenRouterKey(c.env.OPENROUTER_API_KEY) ? c.env.OPENROUTER_API_KEY.trim() : null;
+  const strictAiMode = isStrictAiMode(c.env);
   const parsed = aiChatSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return jsonError("Invalid chat payload.");
   }
 
   // ── Mock fallback for development when API key not configured ──
-  // Check for missing, empty, or placeholder API keys
-  const isValidApiKey = apiKey && apiKey.length > 10 && !apiKey.startsWith("TODO") && apiKey !== "";
-  if (!isValidApiKey) {
+  if (!apiKey) {
+    if (strictAiMode) {
+      return jsonError("AI service unavailable.", 503);
+    }
     const mockResponse = generateMockAiResponse(parsed.data.messages);
     await new Promise(r => setTimeout(r, 500));
     return c.json({ message: mockResponse });
@@ -1461,21 +1161,19 @@ app.post("/api/ai/chat", async (c) => {
     ...parsed.data.messages,
   ];
 
-  const models: [string, string] = [
-    "google/gemini-3-flash-preview:online",
-    "google/gemini-2.5-flash:online",
-  ];
+  const models = getOpenRouterModels(c.env.OPENROUTER_CHAT_MODELS, DEFAULT_CHAT_MODELS);
+  const referer = c.env.OPENROUTER_REFERER ?? DEFAULT_OPENROUTER_REFERER;
 
   let lastError: string | null = null;
   let lastStatus = 0;
 
   for (const model of models) {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch(OPENROUTER_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
+        "HTTP-Referer": referer,
         "X-Title": "ScamShield MY",
       },
       body: JSON.stringify({
@@ -1498,9 +1196,12 @@ app.post("/api/ai/chat", async (c) => {
     lastError = await response.text().catch(() => "Unknown error");
     logger.warn("ai_chat_upstream_error", { model, status: lastStatus, error: lastError });
     
-    // If authentication failed, the API key is invalid - fall back to mock
-    if (lastStatus === 502 && lastError.includes("authenticate")) {
-      logger.warn("ai_chat_auth_failed", { message: "OpenRouter API key appears invalid, using mock response" });
+    // If authentication failed, fail closed in strict mode.
+    if (isOpenRouterAuthFailure(lastStatus, lastError ?? "")) {
+      logger.warn("ai_chat_auth_failed", { status: lastStatus });
+      if (strictAiMode) {
+        return jsonError("AI provider authentication failed.", 502);
+      }
       const mockResponse = generateMockAiResponse(parsed.data.messages);
       return c.json({ message: mockResponse });
     }
@@ -1580,242 +1281,7 @@ app.get("/api/dashboard/admin", async (c) => {
   });
 });
 
-/* ─── Gamification APIs ─── */
-
-app.get("/api/leaderboard", async (c) => {
-  const limitParam = Number.parseInt(c.req.query("limit") ?? "20", 10);
-  const limit = Number.isFinite(limitParam) ? limitParam : 20;
-  const leaderboard = await getLeaderboard(c.env.DB, limit);
-  return c.json({
-    generatedAt: new Date().toISOString(),
-    leaderboard,
-  });
-});
-
-app.get("/api/gamification/me", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session) return jsonError("Authentication required.", 401);
-
-  const monthKey = c.req.query("month") ?? getCompetitionMonthKey();
-  const [profile, referrals, prizes, competition] = await Promise.all([
-    getGamificationProfile(c.env.DB, session.userId),
-    getReferralSummary(c.env.DB, session.userId),
-    listCashPrizes(c.env.DB, { userId: session.userId, limit: 20 }),
-    getMonthlyCompetitionOverview(c.env.DB, monthKey, 20),
-  ]);
-
-  return c.json({
-    profile,
-    referrals,
-    prizes,
-    competition,
-  });
-});
-
-app.get("/api/referrals/me", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session) return jsonError("Authentication required.", 401);
-  const referral = await getReferralSummary(c.env.DB, session.userId);
-  return c.json(referral);
-});
-
-app.post("/api/referrals/apply", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session) return jsonError("Authentication required.", 401);
-
-  const parsed = referralApplySchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid referral payload.");
-
-  try {
-    const applied = await applyReferralCode(c.env.DB, session.userId, parsed.data.code);
-    const [profile, referral] = await Promise.all([
-      getGamificationProfile(c.env.DB, session.userId),
-      getReferralSummary(c.env.DB, session.userId),
-    ]);
-    return c.json({
-      status: "applied",
-      applied,
-      profile,
-      referral,
-    });
-  } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Referral apply failed.", 409);
-  }
-});
-
-app.post("/api/admin/seeds/monthly-competition", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = monthlyCompetitionSeedSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!parsed.success) return jsonError("Invalid monthly competition seed payload.");
-
-  const seeded = await seedFirstMonthlyCompetition(c.env.DB, parsed.data);
-  return c.json(seeded);
-});
-
-app.post("/api/admin/seeds/bounties", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = bountySeedSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!parsed.success) return jsonError("Invalid bounty seed payload.");
-
-  const seeded = await seedFirstMonthlyBounties(c.env.DB, session.userId, parsed.data.bounties);
-  return c.json(seeded);
-});
-
-app.get("/api/bounties", async (c) => {
-  const statusQuery = (c.req.query("status") ?? "open").toLowerCase();
-  const status = statusQuery === "all" || statusQuery === "open" || statusQuery === "claimed" || statusQuery === "closed"
-    ? statusQuery
-    : "open";
-  const limitParam = Number.parseInt(c.req.query("limit") ?? "25", 10);
-  const limit = Number.isFinite(limitParam) ? limitParam : 25;
-
-  const bounties = await listBounties(c.env.DB, status, limit);
-  return c.json({ bounties });
-});
-
-app.post("/api/bounties", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = bountyCreateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid bounty payload.");
-
-  const bounty = await createBounty(c.env.DB, {
-    ...parsed.data,
-    createdByUserId: session.userId,
-  });
-  return c.json({ bounty });
-});
-
-app.post("/api/bounties/:id/claim", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session) return jsonError("Authentication required.", 401);
-
-  const bountyId = Number.parseInt(c.req.param("id"), 10);
-  if (!Number.isFinite(bountyId) || bountyId <= 0) return jsonError("Invalid bounty id.");
-
-  try {
-    const bounty = await claimBounty(c.env.DB, bountyId, session.userId);
-    await touchDailyStreak(c.env.DB, session.userId).catch(() => { });
-    return c.json({ bounty });
-  } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Bounty claim failed.", 409);
-  }
-});
-
-app.post("/api/bounties/:id/complete", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const bountyId = Number.parseInt(c.req.param("id"), 10);
-  if (!Number.isFinite(bountyId) || bountyId <= 0) return jsonError("Invalid bounty id.");
-
-  const parsed = bountyCompleteSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!parsed.success) return jsonError("Invalid bounty completion payload.");
-
-  try {
-    const completed = await completeBounty(c.env.DB, bountyId, parsed.data.winnerUserId);
-    return c.json(completed);
-  } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Bounty completion failed.", 409);
-  }
-});
-
-app.get("/api/competitions/monthly", async (c) => {
-  const monthKey = c.req.query("month") ?? getCompetitionMonthKey();
-  const limitParam = Number.parseInt(c.req.query("limit") ?? "20", 10);
-  const limit = Number.isFinite(limitParam) ? limitParam : 20;
-  const competition = await getMonthlyCompetitionOverview(c.env.DB, monthKey, limit);
-  return c.json(competition);
-});
-
-app.post("/api/competitions/monthly", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = monthlyCompetitionSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid competition payload.");
-
-  const competition = await upsertMonthlyCompetition(c.env.DB, parsed.data);
-  return c.json({ competition });
-});
-
-app.post("/api/competitions/monthly/finalize", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = finalizeCompetitionSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid finalize payload.");
-
-  const monthKey = parsed.data.monthKey ?? getCompetitionMonthKey();
-  const finalized = await finalizeMonthlyCompetition(
-    c.env.DB,
-    monthKey,
-    parsed.data.payoutCentsByRank,
-    parsed.data.partnerName,
-  );
-  return c.json(finalized);
-});
-
-app.get("/api/prizes", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session) return jsonError("Authentication required.", 401);
-
-  const status = c.req.query("status") ?? undefined;
-  const scope = c.req.query("scope") ?? "mine";
-  const prizes = session.role === "admin" && scope === "all"
-    ? await listCashPrizes(c.env.DB, { status, limit: 50 })
-    : await listCashPrizes(c.env.DB, { userId: session.userId, status, limit: 50 });
-
-  return c.json({ prizes });
-});
-
-app.post("/api/prizes", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = cashPrizeCreateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid cash prize payload.");
-
-  const prize = await createCashPrize(c.env.DB, parsed.data);
-  return c.json({ prize });
-});
-
-app.patch("/api/prizes/:id", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const prizeId = Number.parseInt(c.req.param("id"), 10);
-  if (!Number.isFinite(prizeId) || prizeId <= 0) return jsonError("Invalid prize id.");
-
-  const parsed = cashPrizeUpdateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid cash prize update payload.");
-
-  const prize = await updateCashPrizeStatus(c.env.DB, prizeId, parsed.data);
-  return c.json({ prize });
-});
-
-app.get("/api/partnerships", async (c) => {
-  const status = c.req.query("status") ?? undefined;
-  const partnerships = await listBrandPartnerships(c.env.DB, status, 50);
-  return c.json({ partnerships });
-});
-
-app.post("/api/partnerships", async (c) => {
-  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
-  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
-
-  const parsed = brandPartnershipSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return jsonError("Invalid partnership payload.");
-
-  const partnership = await createBrandPartnership(c.env.DB, parsed.data);
-  return c.json({ partnership });
-});
-
+registerGamificationRoutes(app);
 app.notFound(async (c) => {
   const path = new URL(c.req.url).pathname;
   if (path.startsWith("/api/")) {

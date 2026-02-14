@@ -148,6 +148,36 @@ export async function createCommunityReport(db: D1Database, report: ReportReques
     )
     .run();
 
+  const reportId = Number(result.meta.last_row_id ?? 0);
+
+  // Best-effort normalized identifier index for scalable match queries.
+  try {
+    for (const [identifierKey, identifierValue] of Object.entries(report.identifiers)) {
+      const normalized = String(identifierValue ?? "").trim().toLowerCase();
+      if (!normalized) continue;
+      await db
+        .prepare(
+          `INSERT INTO community_report_identifiers
+           (report_id, identifier_key, identifier_value, normalized_value)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .bind(reportId, identifierKey, identifierValue, normalized)
+        .run();
+    }
+  } catch {
+    // Non-critical fallback while older environments roll out migrations.
+  }
+
+  // Best-effort narrative full-text index for scale.
+  try {
+    await db
+      .prepare("INSERT INTO community_reports_fts (rowid, narrative) VALUES (?, ?)")
+      .bind(reportId, report.narrative)
+      .run();
+  } catch {
+    // Non-critical fallback while older environments roll out migrations.
+  }
+
   await db
     .prepare(
       `INSERT INTO daily_platform_category_counts (day, platform, category, count)
@@ -158,7 +188,7 @@ export async function createCommunityReport(db: D1Database, report: ReportReques
     .bind(report.platform, report.category)
     .run();
 
-  return Number(result.meta.last_row_id ?? 0);
+  return reportId;
 }
 
 export async function upsertPattern(
@@ -212,23 +242,45 @@ export async function upsertPattern(
 }
 
 export async function getCommunityMatchCount(db: D1Database, value: string): Promise<number> {
-  // Escape SQL LIKE wildcards to prevent injection of % or _ matching all rows
-  const escaped = value.toLowerCase().replace(/%/g, "\\%").replace(/_/g, "\\_");
-  const likeTerm = `%${escaped}%`;
-  const row = await db
-    .prepare(
-      `SELECT COUNT(*) as total
-       FROM community_reports
-       WHERE created_at >= datetime('now', '-7 day')
-       AND (
-         lower(identifiers_json) LIKE ?
-         OR lower(narrative) LIKE ?
-       )`,
-    )
-    .bind(likeTerm, likeTerm)
-    .first<{ total: number }>();
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return 0;
 
-  return Number(row?.total ?? 0);
+  const phrase = `"${normalized.replace(/"/g, "\"\"")}"`;
+
+  try {
+    const row = await db
+      .prepare(
+        `SELECT COUNT(DISTINCT cr.id) as total
+         FROM community_reports cr
+         LEFT JOIN community_report_identifiers cri ON cri.report_id = cr.id
+         LEFT JOIN community_reports_fts fts ON fts.rowid = cr.id
+         WHERE cr.created_at >= datetime('now', '-7 day')
+         AND (
+           cri.normalized_value = ?
+           OR fts.narrative MATCH ?
+         )`,
+      )
+      .bind(normalized, phrase)
+      .first<{ total: number }>();
+    return Number(row?.total ?? 0);
+  } catch {
+    // Migration-safe fallback for older deployments without FTS/index tables.
+    const escaped = normalized.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const likeTerm = `%${escaped}%`;
+    const row = await db
+      .prepare(
+        `SELECT COUNT(*) as total
+         FROM community_reports
+         WHERE created_at >= datetime('now', '-7 day')
+         AND (
+           lower(identifiers_json) LIKE ?
+           OR lower(narrative) LIKE ?
+         )`,
+      )
+      .bind(likeTerm, likeTerm)
+      .first<{ total: number }>();
+    return Number(row?.total ?? 0);
+  }
 }
 
 export async function createWarningPage(
@@ -279,17 +331,6 @@ export async function getHeatmapGrid(db: D1Database): Promise<HeatmapCell[]> {
     .all<{ platform: string; category: string; count_7d: number; count_prev_7d: number }>();
 
   const rows = result.results ?? [];
-  if (rows.length === 0) {
-    return [
-      { platform: "Telegram", category: "Investment", count: 12, trend: "↑" },
-      { platform: "WhatsApp", category: "Phishing", count: 9, trend: "↑" },
-      { platform: "Instagram", category: "Impersonation", count: 7, trend: "→" },
-      { platform: "Web", category: "Airdrop", count: 5, trend: "↓" },
-      { platform: "Facebook", category: "Romance", count: 4, trend: "→" },
-      { platform: "Exchange", category: "Job", count: 3, trend: "↑" },
-    ];
-  }
-
   return rows.map((row) => ({
     platform: row.platform,
     category: row.category,

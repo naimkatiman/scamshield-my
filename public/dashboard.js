@@ -48,6 +48,21 @@ function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function appendCell(row, text, className = "") {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  cell.textContent = String(text);
+  row.appendChild(cell);
+  return cell;
+}
+
+function createPill(text, className) {
+  const pill = document.createElement("span");
+  pill.className = className;
+  pill.textContent = text;
+  return pill;
+}
+
 /* ── Detect which dashboard page we're on ── */
 const isAdmin = location.pathname.includes("admin");
 
@@ -88,11 +103,16 @@ function renderClientGamification(data) {
       achievements.forEach((achievement) => {
         const li = document.createElement("li");
         li.className = "dash-achievement-item";
-        li.innerHTML = `
-          <div class="dash-achievement-title">${escapeHtml(achievement.title || achievement.code)}</div>
-          <div class="dash-achievement-desc">${escapeHtml(achievement.description || "")}</div>
-          <div class="dash-achievement-date">${formatDate(achievement.awardedAt)}</div>
-        `;
+        const title = document.createElement("div");
+        title.className = "dash-achievement-title";
+        title.textContent = achievement.title || achievement.code || "";
+        const desc = document.createElement("div");
+        desc.className = "dash-achievement-desc";
+        desc.textContent = achievement.description || "";
+        const date = document.createElement("div");
+        date.className = "dash-achievement-date";
+        date.textContent = formatDate(achievement.awardedAt);
+        li.append(title, desc, date);
         achievementList.appendChild(li);
       });
     }
@@ -118,16 +138,19 @@ function renderClientGamification(data) {
     const rows = safeArray(competition.leaderboard);
     if (rows.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="3" class="dash-empty-cell">No entries yet.</td>`;
+      const td = document.createElement("td");
+      td.colSpan = 3;
+      td.className = "dash-empty-cell";
+      td.textContent = "No entries yet.";
+      tr.appendChild(td);
       competitionBody.appendChild(tr);
     } else {
       rows.forEach((entry) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${entry.rank}</td>
-          <td>${escapeHtml(entry.displayName || "anonymous")}</td>
-          <td class="td-count"><span class="dash-count-badge">${Number(entry.points || 0)}</span></td>
-        `;
+        appendCell(tr, entry.rank);
+        appendCell(tr, entry.displayName || "anonymous");
+        const countCell = appendCell(tr, "", "td-count");
+        countCell.appendChild(createPill(String(Number(entry.points || 0)), "dash-count-badge"));
         competitionBody.appendChild(tr);
       });
     }
@@ -139,16 +162,21 @@ function renderClientGamification(data) {
     const bounties = safeArray(data.bounties);
     if (bounties.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="3" class="dash-empty-cell">No open bounties.</td>`;
+      const td = document.createElement("td");
+      td.colSpan = 3;
+      td.className = "dash-empty-cell";
+      td.textContent = "No open bounties.";
+      tr.appendChild(td);
       bountiesBody.appendChild(tr);
     } else {
       bounties.forEach((bounty) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${escapeHtml(bounty.targetIdentifier || bounty.title || "-")}</td>
-          <td><span class="dash-pill dash-pill--${escapeHtml((bounty.priority || "medium").toLowerCase())}">${escapeHtml(bounty.priority || "medium")}</span></td>
-          <td class="td-count"><span class="dash-count-badge">${Number(bounty.rewardPoints || 0)} pts</span></td>
-        `;
+        appendCell(tr, bounty.targetIdentifier || bounty.title || "-");
+        const priorityCell = appendCell(tr, "");
+        const normalizedPriority = String(bounty.priority || "medium").toLowerCase().replace(/[^a-z]/g, "");
+        priorityCell.appendChild(createPill(String(bounty.priority || "medium"), `dash-pill dash-pill--${normalizedPriority}`));
+        const rewardCell = appendCell(tr, "", "td-count");
+        rewardCell.appendChild(createPill(`${Number(bounty.rewardPoints || 0)} pts`, "dash-count-badge"));
         bountiesBody.appendChild(tr);
       });
     }
@@ -160,17 +188,21 @@ function renderClientGamification(data) {
     const prizes = safeArray(data.prizes);
     if (prizes.length === 0) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="4" class="dash-empty-cell">No cash prize records yet.</td>`;
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.className = "dash-empty-cell";
+      td.textContent = "No cash prize records yet.";
+      tr.appendChild(td);
       prizesBody.appendChild(tr);
     } else {
       prizes.forEach((prize) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><span class="dash-pill dash-pill--${escapeHtml((prize.status || "pending").toLowerCase())}">${escapeHtml(prize.status || "pending")}</span></td>
-          <td>${formatCurrencyFromCents(prize.amountCents || 0, prize.currency || "USD")}</td>
-          <td>${escapeHtml(prize.partnerName || "-")}</td>
-          <td>${formatDate(prize.createdAt)}</td>
-        `;
+        const statusCell = appendCell(tr, "");
+        const normalizedStatus = String(prize.status || "pending").toLowerCase().replace(/[^a-z]/g, "");
+        statusCell.appendChild(createPill(String(prize.status || "pending"), `dash-pill dash-pill--${normalizedStatus}`));
+        appendCell(tr, formatCurrencyFromCents(prize.amountCents || 0, prize.currency || "USD"));
+        appendCell(tr, prize.partnerName || "-");
+        appendCell(tr, formatDate(prize.createdAt));
         prizesBody.appendChild(tr);
       });
     }
@@ -248,11 +280,11 @@ async function loadClientDashboard() {
         history.forEach((item) => {
           const tr = document.createElement("tr");
           const actionClass = item.action === "verdict" ? "action-verdict" : "action-chat";
-          tr.innerHTML = `
-            <td><span class="dash-action-badge ${actionClass}">${escapeHtml(item.action)}</span></td>
-            <td>${formatDate(item.timestamp)}</td>
-            <td>${formatTime(item.timestamp)}</td>
-          `;
+          const actionCell = appendCell(tr, "");
+          const actionBadge = createPill(String(item.action || "-"), `dash-action-badge ${actionClass}`);
+          actionCell.appendChild(actionBadge);
+          appendCell(tr, formatDate(item.timestamp));
+          appendCell(tr, formatTime(item.timestamp));
           tbody.appendChild(tr);
         });
       }

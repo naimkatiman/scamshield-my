@@ -113,6 +113,12 @@ export interface Env {
   CHAINABUSE_API_BASE?: string;
   CRYPTOSCAMDB_API_BASE?: string;
   OPENROUTER_API_KEY?: string;
+  OPENROUTER_REFERER?: string;
+  OPENROUTER_REPORT_MODELS?: string;
+  OPENROUTER_CHAT_MODELS?: string;
+  AI_STRICT_MODE?: string;
+  CORS_ALLOWED_ORIGINS?: string;
+  PUBLIC_PARTNERSHIPS_ENABLED?: string;
   GOPLUS_APP_KEY?: string;
   GOPLUS_APP_SECRET?: string;
   JWT_SECRET: string;

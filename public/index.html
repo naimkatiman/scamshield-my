@@ -41,7 +41,7 @@
     <div class="parallax-layer parallax-base">
 
       <!-- Toast container -->
-      <div id="toast-container" class="toast-container"></div>
+      <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
       <main class="container">
         <!-- Auth Top Bar -->
@@ -142,9 +142,11 @@
                 data-i18n="ai.quick.emergency">Emergency contacts</button>
             </div>
             <form id="ai-chat-form-inline" class="ai-chat-input-row">
+              <label for="ai-chat-input-inline" class="visually-hidden" data-i18n="ai.input.label">Describe your situation</label>
               <textarea id="ai-chat-input-inline" class="ai-chat-input"
                 placeholder="Describe your situation... e.g. &quot;I sent RM5,000 to a fake investment group on Telegram 2 hours ago&quot;"
-                data-i18n-placeholder="ai.input.placeholder" rows="2"></textarea>
+                data-i18n-placeholder="ai.input.placeholder" aria-label="Describe your situation"
+                data-i18n-aria-label="ai.input.label" rows="2"></textarea>
               <button type="submit" id="ai-chat-send-inline" class="btn btn-primary ai-chat-send">
                 <span class="btn-text" data-i18n="ai.btn.send">Send</span>
                 <span class="btn-loader hidden">
@@ -181,8 +183,10 @@
 
           <form id="flow-input-form" class="flow-input-form">
             <div class="flow-input-wrap">
+              <label for="flow-input" class="visually-hidden" data-i18n="flow.input.label">Suspicious input</label>
               <input id="flow-input" type="text" placeholder="Paste anything: 0x... address, @handle, URL, phone number"
-                data-i18n-placeholder="flow.input.placeholder" required autocomplete="off">
+                data-i18n-placeholder="flow.input.placeholder" aria-label="Suspicious input"
+                data-i18n-aria-label="flow.input.label" required autocomplete="off">
               <span id="flow-detect-badge" class="auto-detect-badge hidden"></span>
             </div>
             <button type="submit" id="flow-submit" class="btn btn-primary btn-lg flow-submit">
@@ -300,15 +304,15 @@
                 <svg class="icon">
                   <use href="#icon-sparkles"></use>
                 </svg>
-                AI Generated
+                <span data-i18n="flow.reports.mode.ai">AI Generated</span>
               </button>
               <button id="report-mode-template" class="report-mode-btn">
                 <svg class="icon">
                   <use href="#icon-file-text"></use>
                 </svg>
-                Template
+                <span data-i18n="flow.reports.mode.template">Template</span>
               </button>
-              <span id="report-mode-badge" class="report-mode-badge hidden"></span>
+              <span id="report-mode-badge" class="report-mode-badge hidden" aria-live="polite"></span>
             </div>
 
             <div class="report-tabs" id="flow-report-tabs">
@@ -388,7 +392,7 @@
 
             <div class="progress-section">
               <div class="progress-header">
-                <span id="flow-progress-label" class="progress-label">0% contained</span>
+                <span id="flow-progress-label" class="progress-label" aria-live="polite">0% contained</span>
                 <span id="flow-progress-count" class="progress-count">0 / 0 actions</span>
               </div>
               <div class="progress-track">
@@ -427,15 +431,15 @@
                 </div>
                 <div class="flow-share-buttons">
                   <button id="flow-share-whatsapp" class="btn btn-sm flow-share-btn flow-share-btn--wa">
-                    Share on WhatsApp
+                    <span data-i18n="flow.share.whatsapp">Share on WhatsApp</span>
                   </button>
                   <button id="flow-share-telegram" class="btn btn-sm flow-share-btn flow-share-btn--tg">
-                    Share on Telegram
+                    <span data-i18n="flow.share.telegram">Share on Telegram</span>
                   </button>
                   <button id="flow-share-native" class="btn btn-sm">
                     <svg class="icon">
                       <use href="#icon-share"></use>
-                    </svg> Share
+                    </svg> <span data-i18n="flow.share.native">Share</span>
                   </button>
                 </div>
               </div>
@@ -612,10 +616,11 @@
   </div> <!-- /.parallax-wrapper -->
 
   <!-- AI Chat Drawer (floating, not a mode) -->
-  <div id="ai-chat-drawer" class="ai-drawer hidden">
+  <div id="ai-chat-drawer" class="ai-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="ai-drawer-title"
+    tabindex="-1">
     <div class="ai-drawer-header">
-      <h3>AI Assistant</h3>
-      <button id="ai-drawer-close" class="ai-drawer-close">&times;</button>
+      <h3 id="ai-drawer-title" data-i18n="nav.ai_assistant">AI Assistant</h3>
+      <button id="ai-drawer-close" class="ai-drawer-close" aria-label="Close AI Assistant" data-i18n-aria-label="ai.drawer.close">&times;</button>
     </div>
     <div id="ai-chat-messages" class="ai-chat-messages">
       <div class="ai-msg ai-msg--assistant">
@@ -633,8 +638,10 @@
       </div>
     </div>
     <form id="ai-chat-form" class="ai-chat-input-row">
+      <label for="ai-chat-input" class="visually-hidden" data-i18n="ai.input.label">Describe your situation</label>
       <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Describe your situation..."
-        data-i18n-placeholder="ai.input.placeholder" rows="2"></textarea>
+        data-i18n-placeholder="ai.input.placeholder" aria-label="Describe your situation"
+        data-i18n-aria-label="ai.input.label" rows="2"></textarea>
       <button type="submit" id="ai-chat-send" class="btn btn-primary ai-chat-send">
         <span class="btn-text" data-i18n="ai.btn.send">Send</span>
         <span class="btn-loader hidden">

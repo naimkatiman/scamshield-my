@@ -121,6 +121,18 @@
   box-sizing: border-box;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 body {
   margin: 0;
   color: var(--text-main);
@@ -300,53 +312,6 @@ body {
 
 
 /* ── Mode Switcher (Segmented Control) ── */
-.mode-switcher {
-  display: flex;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(12px);
-  padding: 6px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-light);
-  margin: 0 auto 32px;
-  max-width: 400px;
-  position: relative;
-  box-shadow: var(--shadow-sm);
-}
-
-.mode-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  position: relative;
-  z-index: 1;
-}
-
-.mode-btn:hover {
-  color: var(--text-secondary);
-}
-
-.mode-btn--active {
-  background: #fff;
-  color: var(--brand-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  transform: scale(1.02);
-}
-
-.mode-icon {
-  font-size: 1.1rem;
-}
 
 /* ── Trust Signals ── */
 .trust-badge {
@@ -2251,53 +2216,6 @@ section[id] {
 /* ================================================================== */
 /*  Mode Switcher                                                      */
 /* ================================================================== */
-
-.mode-switcher {
-  display: flex;
-  gap: 4px;
-  background: var(--official-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 4px;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
-  width: fit-content;
-}
-
-.mode-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.mode-btn:hover {
-  color: var(--text-main);
-  background: var(--official-card-alt);
-}
-
-.mode-btn--active {
-  background: var(--brand-primary);
-  color: white;
-}
-
-.mode-btn--active:hover {
-  background: var(--brand-primary);
-  color: white;
-}
-
-.mode-icon {
-  font-size: 1rem;
-}
 
 .mode-panel.hidden {
   display: none;
@@ -4675,58 +4593,109 @@ textarea:focus-visible {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MODE TOGGLE (AI / Manual)
+   SEGMENTED CONTROLS (MODE + REPORT + LEGACY SWITCHER)
    ═══════════════════════════════════════════════════════════════════ */
 
-.mode-toggle-wrap {
+.mode-switcher,
+.mode-toggle-wrap,
+.report-mode-toggle {
   display: flex;
+  align-items: center;
+  gap: var(--seg-gap, 4px);
+  padding: var(--seg-padding, 4px);
+  border: 1px solid var(--seg-border, var(--border-light));
+  border-radius: var(--seg-radius, 12px);
+  background: var(--seg-bg, var(--official-card-alt));
+  box-shadow: var(--seg-shadow, none);
+  backdrop-filter: var(--seg-backdrop, none);
+}
+
+.mode-btn,
+.mode-toggle-btn,
+.report-mode-btn {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--seg-btn-gap, 8px);
+  padding: var(--seg-btn-padding, 10px 20px);
+  border: none;
+  border-radius: var(--seg-btn-radius, 10px);
+  background: transparent;
+  color: var(--seg-btn-color, var(--text-muted));
+  font-family: var(--seg-btn-font, var(--font-heading));
+  font-weight: 600;
+  font-size: var(--seg-btn-font-size, 0.9rem);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.mode-btn:hover,
+.mode-toggle-btn:hover,
+.report-mode-btn:hover {
+  color: var(--seg-btn-hover-color, var(--text-main));
+  background: var(--seg-btn-hover-bg, rgba(255, 255, 255, 0.5));
+}
+
+.mode-btn--active,
+.mode-toggle-btn--active,
+.report-mode-btn--active {
+  background: var(--seg-btn-active-bg, var(--brand-primary));
+  color: var(--seg-btn-active-color, #fff);
+  box-shadow: var(--seg-btn-active-shadow, none);
+}
+
+.mode-btn--active:hover,
+.mode-toggle-btn--active:hover,
+.report-mode-btn--active:hover {
+  background: var(--seg-btn-active-bg, var(--brand-primary));
+  color: var(--seg-btn-active-color, #fff);
+}
+
+.mode-icon,
+.mode-toggle-btn .icon,
+.report-mode-btn .icon {
+  width: var(--seg-icon-size, 16px);
+  height: var(--seg-icon-size, 16px);
+}
+
+.mode-icon {
+  font-size: var(--seg-icon-size, 16px);
+}
+
+.mode-switcher {
+  width: fit-content;
+  margin-bottom: 16px;
+  --seg-bg: var(--official-card);
+  --seg-border: var(--border);
+  --seg-radius: var(--radius-pill);
+  --seg-shadow: var(--shadow-sm);
+}
+
+.mode-btn {
+  --seg-btn-radius: var(--radius-pill);
+  --seg-btn-padding: 10px 20px;
+  --seg-btn-font: var(--font-heading);
+  --seg-btn-font-size: 0.9rem;
+  --seg-btn-hover-bg: var(--official-card-alt);
+}
+
+.mode-toggle-wrap {
+  justify-content: center;
   margin-bottom: 20px;
-  background: var(--official-card-alt);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 4px;
-  backdrop-filter: blur(8px);
+  --seg-bg: var(--official-card-alt);
+  --seg-border: var(--border-light);
+  --seg-radius: 12px;
+  --seg-backdrop: blur(8px);
 }
 
 .mode-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 24px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: "Chakra Petch", monospace;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
   flex: 1;
-  justify-content: center;
-}
-
-.mode-toggle-btn:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.mode-toggle-btn--active {
-  background: var(--brand-primary);
-  color: white;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
-}
-
-.mode-toggle-btn--active:hover {
-  background: var(--brand-primary);
-  color: white;
-}
-
-.mode-toggle-btn .icon {
-  width: 16px;
-  height: 16px;
+  --seg-btn-padding: 10px 24px;
+  --seg-btn-radius: 10px;
+  --seg-btn-font: var(--font-heading);
+  --seg-btn-font-size: 0.9rem;
+  --seg-btn-active-bg: var(--brand-primary);
+  --seg-btn-active-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -4782,46 +4751,21 @@ textarea:focus-visible {
    ═══════════════════════════════════════════════════════════════════ */
 
 .report-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   margin-bottom: 12px;
-  background: var(--official-card-alt);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  padding: 3px;
+  --seg-padding: 3px;
+  --seg-radius: 8px;
 }
 
 .report-mode-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: "DM Sans", sans-serif;
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.report-mode-btn:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.report-mode-btn--active {
-  background: white;
-  color: var(--text-main);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-
-.report-mode-btn .icon {
-  width: 14px;
-  height: 14px;
+  --seg-btn-gap: 6px;
+  --seg-btn-padding: 6px 16px;
+  --seg-btn-radius: 6px;
+  --seg-btn-font: var(--font-body);
+  --seg-btn-font-size: 0.8rem;
+  --seg-btn-active-bg: #fff;
+  --seg-btn-active-color: var(--text-main);
+  --seg-btn-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --seg-icon-size: 14px;
 }
 
 .report-mode-badge {

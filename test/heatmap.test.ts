@@ -15,15 +15,10 @@ function createMockDB(rows: unknown[] = []): D1Database {
 }
 
 describe("getHeatmapGrid", () => {
-  it("returns fallback demo data when DB is empty", async () => {
+  it("returns an empty list when DB is empty", async () => {
     const db = createMockDB([]);
     const grid = await getHeatmapGrid(db);
-    expect(grid.length).toBeGreaterThan(0);
-    // Verify demo data structure
-    expect(grid[0]).toHaveProperty("platform");
-    expect(grid[0]).toHaveProperty("category");
-    expect(grid[0]).toHaveProperty("count");
-    expect(grid[0]).toHaveProperty("trend");
+    expect(grid).toEqual([]);
   });
 
   it("computes upward trend when count_7d > count_prev_7d", async () => {

@@ -38,8 +38,12 @@ ScamShield MY provides real-time scam verification, community-driven reporting, 
 ### Key Components
 ```
 src/
-├── index.ts              # Main application router
+├── index.ts              # Worker entrypoint + shared middleware
 ├── types.ts              # TypeScript type definitions
+├── routes/               # Route modules by domain
+│   ├── auth.ts           # OAuth/session + quota endpoints
+│   ├── reporting.ts      # Report submission + AI report generation
+│   └── gamification.ts   # Bounties, prizes, partnerships, referrals
 ├── core/                 # Business logic modules
 │   ├── auth.ts          # Authentication & session management
 │   ├── verdictService.ts # Risk assessment engine
@@ -281,7 +285,7 @@ wrangler custom-domains add scamshield.my
 
 ### Code Standards
 - TypeScript strict mode enabled
-- ESLint configuration for code quality
+- ESLint configuration for code quality (`npm run lint`)
 - Vitest for unit testing
 - 100% test coverage for critical paths
 
@@ -289,6 +293,9 @@ wrangler custom-domains add scamshield.my
 ```bash
 # Run all tests
 npm test
+
+# Run lint checks
+npm run lint
 
 # Run specific test file
 npm test gamification.test.ts

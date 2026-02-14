@@ -49,6 +49,18 @@ const CATEGORY_WEIGHTS: Record<string, number> = {
   fallback: 0.1,
 };
 
+const SOURCE_PRIORITY = [
+  "CoinGecko",
+  "Honeypot.is",
+  "GoPlus",
+  "Chainabuse",
+  "CryptoScamDB",
+] as const;
+
+const SOURCE_PRIORITY_INDEX = new Map<string, number>(
+  SOURCE_PRIORITY.map((source, index) => [source, index]),
+);
+
 /**
  * Compute a weighted composite risk score.
  *
@@ -159,7 +171,21 @@ export function computeVerdict(normalizedSignals: NormalizedSignal[]): VerdictRe
 
   const nextActions = nextActionsForVerdict(verdict);
 
-  const sources = Array.from(new Set(normalizedSignals.map((s) => s.source)));
+  const sources = Array.from(new Set(normalizedSignals.map((s) => s.source)))
+    .sort((a, b) => {
+      const aIndex = SOURCE_PRIORITY_INDEX.get(a);
+      const bIndex = SOURCE_PRIORITY_INDEX.get(b);
+      if (aIndex !== undefined && bIndex !== undefined) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== undefined) {
+        return -1;
+      }
+      if (bIndex !== undefined) {
+        return 1;
+      }
+      return a.localeCompare(b);
+    });
 
   return {
     verdict,

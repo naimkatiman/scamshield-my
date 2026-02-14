@@ -577,6 +577,50 @@ async function syncPremiumStatus(db: D1Database, userId: string): Promise<void> 
     .run();
 }
 
+async function withSavepoint<T>(db: D1Database, action: () => Promise<T>): Promise<T> {
+  const savepoint = `sp_${crypto.randomUUID().replace(/-/g, "_")}`;
+  await db.prepare(`SAVEPOINT ${savepoint}`).run();
+  try {
+    const result = await action();
+    await db.prepare(`RELEASE SAVEPOINT ${savepoint}`).run();
+    return result;
+  } catch (error) {
+    await db.prepare(`ROLLBACK TO SAVEPOINT ${savepoint}`).run().catch(() => { });
+    await db.prepare(`RELEASE SAVEPOINT ${savepoint}`).run().catch(() => { });
+    throw error;
+  }
+}
+
+async function claimIdempotencyKey(
+  db: D1Database,
+  scope: string,
+  idempotencyKey: string | undefined,
+  userId?: string | null,
+): Promise<boolean> {
+  if (!idempotencyKey) {
+    return true;
+  }
+  const normalizedKey = idempotencyKey.trim();
+  if (!normalizedKey) {
+    return true;
+  }
+
+  try {
+    const result = await db
+      .prepare(
+        `INSERT OR IGNORE INTO gamification_idempotency_keys
+         (idempotency_key, scope, user_id)
+         VALUES (?, ?, ?)`,
+      )
+      .bind(normalizedKey, scope, userId ?? null)
+      .run();
+    return Number(result.meta.changes ?? 0) > 0;
+  } catch {
+    // Backward compatibility while older DBs roll forward.
+    return true;
+  }
+}
+
 export async function getGamificationProfile(db: D1Database, userId: string): Promise<GamificationProfile> {
   await ensureGamificationProfile(db, userId);
   await syncPremiumStatus(db, userId);
@@ -613,39 +657,48 @@ export async function awardPoints(
   metadata: Record<string, unknown> = {},
   day = toIsoDay(),
   uniquePerDay = false,
+  idempotencyKey?: string,
 ): Promise<number> {
   if (!Number.isFinite(points) || points <= 0) {
     return 0;
   }
 
   await ensureGamificationProfile(db, userId);
+  const pointsValue = Math.floor(points);
 
-  const insertSql = uniquePerDay
-    ? "INSERT OR IGNORE INTO points_ledger (user_id, action_type, points, metadata_json, day) VALUES (?, ?, ?, ?, ?)"
-    : "INSERT INTO points_ledger (user_id, action_type, points, metadata_json, day) VALUES (?, ?, ?, ?, ?)";
+  return withSavepoint(db, async () => {
+    const canProceed = await claimIdempotencyKey(db, `award:${actionType}`, idempotencyKey, userId);
+    if (!canProceed) {
+      return 0;
+    }
 
-  const insertResult = await db
-    .prepare(insertSql)
-    .bind(userId, actionType, Math.floor(points), JSON.stringify(metadata), day)
-    .run();
+    const insertSql = uniquePerDay
+      ? "INSERT OR IGNORE INTO points_ledger (user_id, action_type, points, metadata_json, day) VALUES (?, ?, ?, ?, ?)"
+      : "INSERT INTO points_ledger (user_id, action_type, points, metadata_json, day) VALUES (?, ?, ?, ?, ?)";
 
-  if (Number(insertResult.meta.changes ?? 0) === 0) {
-    return 0;
-  }
+    const insertResult = await db
+      .prepare(insertSql)
+      .bind(userId, actionType, pointsValue, JSON.stringify(metadata), day)
+      .run();
 
-  await db
-    .prepare(
-      `UPDATE user_gamification_profiles
-       SET total_points = total_points + ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = ?`,
-    )
-    .bind(Math.floor(points), userId)
-    .run();
+    if (Number(insertResult.meta.changes ?? 0) === 0) {
+      return 0;
+    }
 
-  await syncPremiumStatus(db, userId);
+    await db
+      .prepare(
+        `UPDATE user_gamification_profiles
+         SET total_points = total_points + ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ?`,
+      )
+      .bind(pointsValue, userId)
+      .run();
 
-  return Math.floor(points);
+    await syncPremiumStatus(db, userId);
+
+    return pointsValue;
+  });
 }
 
 export async function touchDailyStreak(
@@ -734,66 +787,109 @@ export async function grantReportSubmissionRewards(
   userId: string,
   reportId: number,
   today = toIsoDay(),
+  idempotencyKey?: string,
 ): Promise<ReportRewardResult> {
   await ensureGamificationProfile(db, userId);
-  const streak = await touchDailyStreak(db, userId, today);
+  const scope = "report_submission_reward";
+  const resolvedIdempotencyKey = idempotencyKey ?? `${scope}:${userId}:${reportId}`;
 
-  await db
-    .prepare(
-      `UPDATE user_gamification_profiles
-       SET reports_submitted = reports_submitted + 1,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = ?`,
-    )
-    .bind(userId)
-    .run();
-
-  const profileRow = await getProfileRow(db, userId);
-  const reportCount = Number(profileRow?.reports_submitted ?? 0);
-
-  const reportPointsAwarded = await awardPoints(db, userId, "report_submitted", POINTS.REPORT_SUBMITTED, {
-    reportId,
-    reportCount,
-  }, today);
-
-  const existingAchievements = await listUserAchievements(db, userId);
-  const unlockedDefs = getUnlockedReportAchievements(
-    reportCount,
-    existingAchievements.map((item) => item.code),
-  );
-
-  const unlockedAchievements: UserAchievement[] = [];
-  let achievementBonusPoints = 0;
-
-  for (const achievement of unlockedDefs) {
-    const inserted = await insertAchievement(db, userId, achievement, { reportCount, reportId });
-    if (!inserted) {
-      continue;
+  return withSavepoint(db, async () => {
+    const canProceed = await claimIdempotencyKey(db, scope, resolvedIdempotencyKey, userId);
+    if (!canProceed) {
+      const profile = await getGamificationProfile(db, userId);
+      return {
+        reportCount: profile.reportsSubmitted,
+        reportPointsAwarded: 0,
+        streak: {
+          streakUpdated: false,
+          awardedPoints: 0,
+          currentStreakDays: profile.currentStreakDays,
+          longestStreakDays: profile.longestStreakDays,
+          today,
+        },
+        unlockedAchievements: [],
+        achievementBonusPoints: 0,
+        profile,
+      };
     }
 
-    unlockedAchievements.push({
-      code: achievement.code,
-      title: achievement.title,
-      description: achievement.description,
-      awardedAt: new Date().toISOString(),
-    });
+    const streak = await touchDailyStreak(db, userId, today);
 
-    achievementBonusPoints += await awardPoints(db, userId, "achievement_unlocked", achievement.bonusPoints, {
-      code: achievement.code,
+    await db
+      .prepare(
+        `UPDATE user_gamification_profiles
+         SET reports_submitted = reports_submitted + 1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ?`,
+      )
+      .bind(userId)
+      .run();
+
+    const profileRow = await getProfileRow(db, userId);
+    const reportCount = Number(profileRow?.reports_submitted ?? 0);
+
+    const reportPointsAwarded = await awardPoints(
+      db,
+      userId,
+      "report_submitted",
+      POINTS.REPORT_SUBMITTED,
+      {
+        reportId,
+        reportCount,
+      },
+      today,
+      false,
+      `${resolvedIdempotencyKey}:points`,
+    );
+
+    const existingAchievements = await listUserAchievements(db, userId);
+    const unlockedDefs = getUnlockedReportAchievements(
       reportCount,
-    }, today);
-  }
+      existingAchievements.map((item) => item.code),
+    );
 
-  const profile = await getGamificationProfile(db, userId);
+    const unlockedAchievements: UserAchievement[] = [];
+    let achievementBonusPoints = 0;
 
-  return {
-    reportCount,
-    reportPointsAwarded,
-    streak,
-    unlockedAchievements,
-    achievementBonusPoints,
-    profile,
-  };
+    for (const achievement of unlockedDefs) {
+      const inserted = await insertAchievement(db, userId, achievement, { reportCount, reportId });
+      if (!inserted) {
+        continue;
+      }
+
+      unlockedAchievements.push({
+        code: achievement.code,
+        title: achievement.title,
+        description: achievement.description,
+        awardedAt: new Date().toISOString(),
+      });
+
+      achievementBonusPoints += await awardPoints(
+        db,
+        userId,
+        "achievement_unlocked",
+        achievement.bonusPoints,
+        {
+          code: achievement.code,
+          reportCount,
+        },
+        today,
+        false,
+        `${resolvedIdempotencyKey}:achievement:${achievement.code}`,
+      );
+    }
+
+    const profile = await getGamificationProfile(db, userId);
+
+    return {
+      reportCount,
+      reportPointsAwarded,
+      streak,
+      unlockedAchievements,
+      achievementBonusPoints,
+      profile,
+    };
+  });
 }
 
 export async function rewardWarningCardCreation(
@@ -802,13 +898,30 @@ export async function rewardWarningCardCreation(
   slug: string,
   verdict: string,
   today = toIsoDay(),
+  idempotencyKey?: string,
 ): Promise<{ pointsAwarded: number; streak: StreakUpdateResult; profile: GamificationProfile }> {
   await ensureGamificationProfile(db, userId);
+  const resolvedIdempotencyKey = idempotencyKey ?? `warning_card_reward:${userId}:${slug}`;
+  const canProceed = await claimIdempotencyKey(db, "warning_card_reward", resolvedIdempotencyKey, userId);
+  if (!canProceed) {
+    const profile = await getGamificationProfile(db, userId);
+    return {
+      pointsAwarded: 0,
+      streak: {
+        streakUpdated: false,
+        awardedPoints: 0,
+        currentStreakDays: profile.currentStreakDays,
+        longestStreakDays: profile.longestStreakDays,
+        today,
+      },
+      profile,
+    };
+  }
   const streak = await touchDailyStreak(db, userId, today);
   const pointsAwarded = await awardPoints(db, userId, "warning_card_created", POINTS.WARNING_CARD_CREATED, {
     slug,
     verdict,
-  }, today);
+  }, today, false, `${resolvedIdempotencyKey}:points`);
   const profile = await getGamificationProfile(db, userId);
   return { pointsAwarded, streak, profile };
 }
@@ -1114,6 +1227,7 @@ export async function completeBounty(
   bountyId: number,
   winnerUserId?: string,
   today = toIsoDay(),
+  idempotencyKey?: string,
 ): Promise<BountyCompletionResult> {
   const bounty = await getBountyById(db, bountyId);
   if (!bounty) {
@@ -1138,42 +1252,72 @@ export async function completeBounty(
   }
 
   await ensureGamificationProfile(db, finalWinner);
+  const resolvedIdempotencyKey = idempotencyKey ?? `bounty_complete:${bountyId}:${finalWinner}`;
 
-  await db
-    .prepare(
-      `UPDATE bounties
-       SET status = 'closed',
-           claimed_by_user_id = ?,
-           closed_at = CURRENT_TIMESTAMP,
-           claimed_at = COALESCE(claimed_at, CURRENT_TIMESTAMP)
-       WHERE id = ?`,
-    )
-    .bind(finalWinner, bountyId)
-    .run();
+  return withSavepoint(db, async () => {
+    const canProceed = await claimIdempotencyKey(db, "bounty_complete", resolvedIdempotencyKey, finalWinner);
+    if (!canProceed) {
+      const existing = await getBountyById(db, bountyId);
+      if (!existing) {
+        throw new Error("Bounty not found.");
+      }
+      return {
+        bounty: existing,
+        winnerUserId: existing.claimedByUserId ?? finalWinner,
+        awardedPoints: 0,
+      };
+    }
 
-  await touchDailyStreak(db, finalWinner, today);
-  const awardedPoints = await awardPoints(
-    db,
-    finalWinner,
-    "bounty_completed",
-    Math.max(1, bounty.rewardPoints || POINTS.BOUNTY_COMPLETED_DEFAULT),
-    {
-      bountyId,
-      title: bounty.title,
-    },
-    today,
-  );
+    const closeResult = await db
+      .prepare(
+        `UPDATE bounties
+         SET status = 'closed',
+             claimed_by_user_id = ?,
+             closed_at = CURRENT_TIMESTAMP,
+             claimed_at = COALESCE(claimed_at, CURRENT_TIMESTAMP)
+         WHERE id = ? AND status != 'closed'`,
+      )
+      .bind(finalWinner, bountyId)
+      .run();
 
-  const updated = await getBountyById(db, bountyId);
-  if (!updated) {
-    throw new Error("Bounty not found after completion.");
-  }
+    if (Number(closeResult.meta.changes ?? 0) === 0) {
+      const existing = await getBountyById(db, bountyId);
+      if (!existing) {
+        throw new Error("Bounty not found.");
+      }
+      return {
+        bounty: existing,
+        winnerUserId: existing.claimedByUserId ?? finalWinner,
+        awardedPoints: 0,
+      };
+    }
 
-  return {
-    bounty: updated,
-    winnerUserId: finalWinner,
-    awardedPoints,
-  };
+    await touchDailyStreak(db, finalWinner, today);
+    const awardedPoints = await awardPoints(
+      db,
+      finalWinner,
+      "bounty_completed",
+      Math.max(1, bounty.rewardPoints || POINTS.BOUNTY_COMPLETED_DEFAULT),
+      {
+        bountyId,
+        title: bounty.title,
+      },
+      today,
+      false,
+      `${resolvedIdempotencyKey}:points`,
+    );
+
+    const updated = await getBountyById(db, bountyId);
+    if (!updated) {
+      throw new Error("Bounty not found after completion.");
+    }
+
+    return {
+      bounty: updated,
+      winnerUserId: finalWinner,
+      awardedPoints,
+    };
+  });
 }
 
 export async function seedFirstMonthlyCompetition(

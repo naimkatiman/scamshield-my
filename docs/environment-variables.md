@@ -22,7 +22,16 @@ Do not store real secrets in `wrangler.toml` or source files. Put secrets in Clo
 ### AI
 - `OPENROUTER_API_KEY`: Secret API key for OpenRouter.
   - Used by `/api/ai/chat` and `/api/report/generate-ai`.
-  - If missing, `/api/ai/chat` returns `503` and report generation falls back to template mode.
+- `AI_STRICT_MODE`: `true/false` (`1/0` also accepted).
+  - When enabled, invalid/missing OpenRouter credentials fail closed with `503/502` instead of mock responses.
+  - Defaults to enabled when `PROVIDER_MODE=live`.
+- `OPENROUTER_CHAT_MODELS`: Comma-separated model fallback list for chat route.
+- `OPENROUTER_REPORT_MODELS`: Comma-separated model fallback list for AI report route.
+- `OPENROUTER_REFERER`: Referer header sent to OpenRouter (defaults to current production URL).
+
+### API Security
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed browser origins for `/api/*` CORS responses.
+- `PUBLIC_PARTNERSHIPS_ENABLED`: `true/false`. Defaults `false` (partnership listing remains admin-only).
 
 ### Browser Rendering
 - `BROWSER_RENDERING_ACCOUNT_ID`: Cloudflare account ID used to build Browser Rendering API base URL.

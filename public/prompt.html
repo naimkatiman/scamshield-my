@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScamShield MY - Survey Prompt</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Using ScamShield design system variables */
+        :root {
+            --official-bg: #f8fafc;
+            --official-card: rgba(255, 255, 255, 0.92);
+            --official-card-alt: rgba(241, 245, 249, 0.7);
+            --official-input: #ffffff;
+            --text-main: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --border: #cbd5e1;
+            --border-light: rgba(203, 213, 225, 0.6);
+            --border-focus: #0f172a;
+            --brand-primary: #0f172a;
+            --brand-action: #2563eb;
+            --brand-action-hover: #1e40af;
+            --brand-glow: rgba(37, 99, 235, 0.15);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.01);
+            --radius: 12px;
+            --radius-sm: 6px;
+            --font-heading: "Chakra Petch", sans-serif;
+            --font-body: "DM Sans", sans-serif;
+            --transition: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            --verdict-safe-bg: rgba(34, 197, 94, 0.1);
+            --verdict-safe: #16a34a;
+            --verdict-safe-border: rgba(34, 197, 94, 0.3);
+            --verdict-risk-bg: rgba(239, 68, 68, 0.1);
+            --verdict-risk: #dc2626;
+            --verdict-risk-border: rgba(239, 68, 68, 0.3);
+            --warning-bg: rgba(234, 179, 8, 0.1);
+            --warning: #ca8a04;
+            --warning-border: rgba(234, 179, 8, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--official-bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .survey-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .survey-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, #1e3a5f 100%);
+            border-radius: var(--radius);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .survey-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+
+        .survey-header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .survey-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .survey-logo svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        .survey-title {
+            font-family: var(--font-heading);
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .survey-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .progress-container {
+            background: var(--official-card);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+            transition: all var(--transition-smooth);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progress-label {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .progress-count {
+            font-size: 14px;
+            color: var(--text-muted);
+            transition: all var(--transition);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--brand-action) 0%, #3b82f6 100%);
+            border-radius: 4px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .prompt-container {
+            background: var(--official-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 40px;
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-light);
+            margin-bottom: 24px;
+        }
+
+        .question-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--brand-action);
+            color: white;
+            border-radius: 50%;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 16px;
+            transition: all var(--transition-smooth);
+        }
+
+        .question-text {
+            font-family: var(--font-heading);
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 24px;
+            padding-left: 16px;
+            border-left: 4px solid var(--brand-action);
+        }
+
+        .question-hint {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: -16px;
+            margin-bottom: 24px;
+            padding-left: 16px;
+        }
+
+        .options-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-item {
+            position: relative;
+        }
+
+        .option-input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: var(--official-input);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 16px;
+            color: var(--text-main);
+            position: relative;
+        }
+
+        .option-label::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius);
+            background: var(--brand-action);
+            opacity: 0;
+            transform: scale(0.95);
+            transition: all var(--transition);
+        }
+
+        .option-label:hover {
+            border-color: var(--brand-action);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .option-label:focus-within {
+            outline: 2px solid var(--brand-action);
+            outline-offset: 2px;
+        }
+
+        .option-input:checked + .option-label {
+            border-color: var(--brand-action);
+            background: rgba(37, 99, 235, 0.08);
+            box-shadow: 0 0 0 3px var(--brand-glow);
+        }
+
+        .option-input:focus + .option-label {
+            outline: 2px solid var(--brand-action);
+            outline-offset: 2px;
+        }
+
+        .option-radio {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            margin-right: 16px;
+            position: relative;
+            transition: all var(--transition);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .option-input:checked + .option-label .option-radio {
+            border-color: var(--brand-action);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .option-input:checked + .option-label .option-radio::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--brand-action);
+            animation: popIn 0.2s ease-out;
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .option-text {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .option-icon {
+            margin-right: 12px;
+            font-size: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .other-input-container {
+            margin-top: 12px;
+            margin-left: 38px;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all var(--transition-smooth);
+        }
+
+        .other-input-container.visible {
+            max-height: 100px;
+            opacity: 1;
+        }
+
+        .other-input {
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 14px;
+            width: 100%;
+            transition: all var(--transition);
+        }
+
+        .other-input:focus {
+            outline: none;
+            border-color: var(--brand-action);
+            box-shadow: 0 0 0 3px var(--brand-glow);
+        }
+
+        .other-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: var(--radius);
+            font-family: var(--font-heading);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+            min-width: 120px;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-back {
+            background: transparent;
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+
+        .btn-back:hover:not(:disabled) {
+            background: var(--official-card-alt);
+            border-color: var(--text-muted);
+            color: var(--text-main);
+        }
+
+        .btn-next, .btn-submit {
+            background: var(--brand-action);
+            color: white;
+            border: none;
+        }
+
+        .btn-next:hover:not(:disabled), .btn-submit:hover:not(:disabled) {
+            background: var(--brand-action-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-next:active:not(:disabled), .btn-submit:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .nav-btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple 0.6s ease-out;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Loading spinner */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .feedback-message {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 16px 24px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            transition: transform 0.3s ease-out;
+        }
+
+        .feedback-message.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .feedback-message.success {
+            background: var(--verdict-safe-bg);
+            color: var(--verdict-safe);
+            border: 1px solid var(--verdict-safe-border);
+        }
+
+        .feedback-message.error {
+            background: var(--verdict-risk-bg);
+            color: var(--verdict-risk);
+            border: 1px solid var(--verdict-risk-border);
+        }
+
+        .feedback-message.warning {
+            background: var(--warning-bg);
+            color: var(--warning);
+            border: 1px solid var(--warning-border);
+        }
+
+        /* Question transitions */
+        .question-container {
+            display: none;
+            opacity: 0;
+            transform: translateX(30px);
+        }
+
+        .question-container.active {
+            display: block;
+            animation: slideIn 0.4s ease-out forwards;
+        }
+
+        .question-container.exiting {
+            animation: slideOut 0.3s ease-in forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+        }
+
+        /* Summary Section */
+        .summary-container {
+            display: none;
+            opacity: 0;
+        }
+
+        .summary-container.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .summary-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .summary-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--verdict-safe-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            animation: bounceIn 0.6s ease-out;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .summary-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--verdict-safe);
+        }
+
+        .summary-title {
+            font-family: var(--font-heading);
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .summary-subtitle {
+            color: var(--text-secondary);
+        }
+
+        .summary-responses {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .response-item {
+            background: var(--official-card-alt);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            border-left: 4px solid var(--brand-action);
+            transition: all var(--transition);
+            animation: slideInLeft 0.4s ease-out backwards;
+        }
+
+        .response-item:nth-child(1) { animation-delay: 0.1s; }
+        .response-item:nth-child(2) { animation-delay: 0.2s; }
+        .response-item:nth-child(3) { animation-delay: 0.3s; }
+        .response-item:nth-child(4) { animation-delay: 0.4s; }
+        .response-item:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .response-item:hover {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .response-question {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .response-answer {
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .edit-btn {
+            background: none;
+            border: none;
+            color: var(--brand-action);
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+        }
+
+        .edit-btn:hover {
+            background: rgba(37, 99, 235, 0.1);
+            text-decoration: none;
+        }
+
+        /* Footer */
+        .survey-footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .survey-footer a {
+            color: var(--brand-action);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        .survey-footer a:hover {
+            text-decoration: underline;
+            color: var(--brand-action-hover);
+        }
+
+        /* Keyboard navigation hint */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--official-card);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-muted);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all var(--transition);
+        }
+
+        .keyboard-hint.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .keyboard-hint kbd {
+            background: var(--official-card-alt);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-family: var(--font-body);
+            font-size: 11px;
+        }
+
+        @media (max-width: 640px) {
+            .survey-header {
+                padding: 30px 16px;
+            }
+
+            .survey-title {
+                font-size: 24px;
+            }
+
+            .prompt-container {
+                padding: 24px;
+            }
+
+            .question-text {
+                font-size: 18px;
+            }
+
+            .option-label {
+                padding: 14px 16px;
+                font-size: 15px;
+            }
+
+            .navigation-buttons {
+                flex-direction: column-reverse;
+            }
+
+            .nav-btn {
+                width: 100%;
+            }
+
+            .keyboard-hint {
+                display: none;
+            }
+
+            .feedback-message {
+                left: 16px;
+                right: 16px;
+                transform: translateX(0) translateY(100px);
+            }
+
+            .feedback-message.visible {
+                transform: translateX(0) translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="survey-wrapper">
+        <header class="survey-header">
+            <div class="survey-header-content">
+                <div class="survey-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                    <span class="survey-title">ScamShield MY</span>
+                </div>
+                <p class="survey-subtitle">Help us improve Malaysia's scam detection platform by sharing your experience and feedback</p>
+            </div>
+        </header>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+                <span class="progress-label">Survey Progress</span>
+                <span class="progress-count" id="progressCount">Question 1 of 5</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 20%"></div>
+            </div>
+        </div>
+
+        <form id="surveyForm">
+            <!-- Question 1: How did you hear about us -->
+            <div class="question-container active" data-question="1">
+                <div class="prompt-container">
+                    <span class="question-number">1</span>
+                    <h2 class="question-text">How did you hear about ScamShield MY?</h2>
+                    <p class="question-hint">Select one option that best describes your discovery channel</p>
+                    
+                    <ul class="options-list">
+                        <li class="option-item">
+                            <input type="radio" id="q1_option1" name="q1_discovery" value="social_media" class="option-input" data-question="1">
+                            <label for="q1_option1" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">📱</span>
+                                <span class="option-text">Social Media (Facebook, Twitter, Instagram, TikTok)</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q1_option2" name="q1_discovery" value="friend" class="option-input" data-question="1">
+                            <label for="q1_option2" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">👥</span>
+                                <span class="option-text">Friend, Family, or Colleague Recommendation</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q1_option3" name="q1_discovery" value="search" class="option-input" data-question="1">
+                            <label for="q1_option3" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🔍</span>
+                                <span class="option-text">Search Engine (Google, Bing, Yahoo)</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q1_option4" name="q1_discovery" value="news" class="option-input" data-question="1">
+                            <label for="q1_option4" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">📰</span>
+                                <span class="option-text">News Article or Media Coverage</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q1_option5" name="q1_discovery" value="government" class="option-input" data-question="1">
+                            <label for="q1_option5" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🏛️</span>
+                                <span class="option-text">Government Agency (PDRM, NFCC, Bank Negara)</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q1_option6" name="q1_discovery" value="other" class="option-input" data-question="1">
+                            <label for="q1_option6" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✏️</span>
+                                <span class="option-text">Other</span>
+                            </label>
+                            <div class="other-input-container" id="q1_otherContainer">
+                                <input type="text" id="q1_otherInput" class="other-input" placeholder="Please specify how you found us..." maxlength="100" data-question="1">
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="navigation-buttons">
+                        <button type="button" class="nav-btn btn-back" disabled style="visibility: hidden;">
+                            ← Back
+                        </button>
+                        <button type="button" class="nav-btn btn-next" data-next="2" disabled>
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question 2: Primary purpose -->
+            <div class="question-container" data-question="2">
+                <div class="prompt-container">
+                    <span class="question-number">2</span>
+                    <h2 class="question-text">What is your primary purpose for using ScamShield MY?</h2>
+                    <p class="question-hint">Choose the main reason you visited our platform</p>
+                    
+                    <ul class="options-list">
+                        <li class="option-item">
+                            <input type="radio" id="q2_option1" name="q2_purpose" value="check_scam" class="option-input" data-question="2">
+                            <label for="q2_option1" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🔎</span>
+                                <span class="option-text">Check if a phone number, website, or message is a scam</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q2_option2" name="q2_purpose" value="report_scam" class="option-input" data-question="2">
+                            <label for="q2_option2" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🚨</span>
+                                <span class="option-text">Report a scam I encountered</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q2_option3" name="q2_purpose" value="learn" class="option-input" data-question="2">
+                            <label for="q2_option3" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">📚</span>
+                                <span class="option-text">Learn about scam prevention and safety tips</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q2_option4" name="q2_purpose" value="verify" class="option-input" data-question="2">
+                            <label for="q2_option4" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✅</span>
+                                <span class="option-text">Verify legitimacy of a business or offer</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q2_option5" name="q2_purpose" value="other" class="option-input" data-question="2">
+                            <label for="q2_option5" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✏️</span>
+                                <span class="option-text">Other</span>
+                            </label>
+                            <div class="other-input-container" id="q2_otherContainer">
+                                <input type="text" id="q2_otherInput" class="other-input" placeholder="Please specify your purpose..." maxlength="100" data-question="2">
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="navigation-buttons">
+                        <button type="button" class="nav-btn btn-back" data-prev="1">
+                            ← Back
+                        </button>
+                        <button type="button" class="nav-btn btn-next" data-next="3" disabled>
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question 3: User experience rating -->
+            <div class="question-container" data-question="3">
+                <div class="prompt-container">
+                    <span class="question-number">3</span>
+                    <h2 class="question-text">How would you rate your overall experience with ScamShield MY?</h2>
+                    <p class="question-hint">Your honest feedback helps us improve</p>
+                    
+                    <ul class="options-list">
+                        <li class="option-item">
+                            <input type="radio" id="q3_option1" name="q3_rating" value="excellent" class="option-input" data-question="3">
+                            <label for="q3_option1" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">⭐</span>
+                                <span class="option-text">Excellent - Exceeded my expectations</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q3_option2" name="q3_rating" value="good" class="option-input" data-question="3">
+                            <label for="q3_option2" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">👍</span>
+                                <span class="option-text">Good - Met my expectations</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q3_option3" name="q3_rating" value="average" class="option-input" data-question="3">
+                            <label for="q3_option3" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">👌</span>
+                                <span class="option-text">Average - Acceptable but could be better</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q3_option4" name="q3_rating" value="poor" class="option-input" data-question="3">
+                            <label for="q3_option4" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">👎</span>
+                                <span class="option-text">Poor - Below my expectations</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q3_option5" name="q3_rating" value="other" class="option-input" data-question="3">
+                            <label for="q3_option5" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✏️</span>
+                                <span class="option-text">Other</span>
+                            </label>
+                            <div class="other-input-container" id="q3_otherContainer">
+                                <input type="text" id="q3_otherInput" class="other-input" placeholder="Please share your specific feedback..." maxlength="100" data-question="3">
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="navigation-buttons">
+                        <button type="button" class="nav-btn btn-back" data-prev="2">
+                            ← Back
+                        </button>
+                        <button type="button" class="nav-btn btn-next" data-next="4" disabled>
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question 4: Feature usage -->
+            <div class="question-container" data-question="4">
+                <div class="prompt-container">
+                    <span class="question-number">4</span>
+                    <h2 class="question-text">Which feature of ScamShield MY did you find most useful?</h2>
+                    <p class="question-hint">Select the feature that provided the most value to you</p>
+                    
+                    <ul class="options-list">
+                        <li class="option-item">
+                            <input type="radio" id="q4_option1" name="q4_feature" value="phone_check" class="option-input" data-question="4">
+                            <label for="q4_option1" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">📞</span>
+                                <span class="option-text">Phone Number Scam Checker</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q4_option2" name="q4_feature" value="website_check" class="option-input" data-question="4">
+                            <label for="q4_option2" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🌐</span>
+                                <span class="option-text">Website/URL Safety Checker</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q4_option3" name="q4_feature" value="sms_check" class="option-input" data-question="4">
+                            <label for="q4_option3" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">💬</span>
+                                <span class="option-text">SMS/Message Content Analyzer</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q4_option4" name="q4_feature" value="reporting" class="option-input" data-question="4">
+                            <label for="q4_option4" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">📋</span>
+                                <span class="option-text">Scam Reporting System (e-Reporting)</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q4_option5" name="q4_feature" value="education" class="option-input" data-question="4">
+                            <label for="q4_option5" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">📖</span>
+                                <span class="option-text">Educational Resources & Scam Alerts</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q4_option6" name="q4_feature" value="other" class="option-input" data-question="4">
+                            <label for="q4_option6" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✏️</span>
+                                <span class="option-text">Other</span>
+                            </label>
+                            <div class="other-input-container" id="q4_otherContainer">
+                                <input type="text" id="q4_otherInput" class="other-input" placeholder="Please specify the feature..." maxlength="100" data-question="4">
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="navigation-buttons">
+                        <button type="button" class="nav-btn btn-back" data-prev="3">
+                            ← Back
+                        </button>
+                        <button type="button" class="nav-btn btn-next" data-next="5" disabled>
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question 5: Recommendation likelihood -->
+            <div class="question-container" data-question="5">
+                <div class="prompt-container">
+                    <span class="question-number">5</span>
+                    <h2 class="question-text">How likely are you to recommend ScamShield MY to others?</h2>
+                    <p class="question-hint">This helps us understand our Net Promoter Score</p>
+                    
+                    <ul class="options-list">
+                        <li class="option-item">
+                            <input type="radio" id="q5_option1" name="q5_recommend" value="very_likely" class="option-input" data-question="5">
+                            <label for="q5_option1" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🌟</span>
+                                <span class="option-text">Very Likely - I've already recommended it</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q5_option2" name="q5_recommend" value="likely" class="option-input" data-question="5">
+                            <label for="q5_option2" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✨</span>
+                                <span class="option-text">Likely - I would recommend it when relevant</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q5_option3" name="q5_recommend" value="neutral" class="option-input" data-question="5">
+                            <label for="q5_option3" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">😐</span>
+                                <span class="option-text">Neutral - I might or might not recommend</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q5_option4" name="q5_recommend" value="unlikely" class="option-input" data-question="5">
+                            <label for="q5_option4" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">🤔</span>
+                                <span class="option-text">Unlikely - I probably wouldn't recommend</span>
+                            </label>
+                        </li>
+
+                        <li class="option-item">
+                            <input type="radio" id="q5_option5" name="q5_recommend" value="other" class="option-input" data-question="5">
+                            <label for="q5_option5" class="option-label">
+                                <span class="option-radio"></span>
+                                <span class="option-icon">✏️</span>
+                                <span class="option-text">Other</span>
+                            </label>
+                            <div class="other-input-container" id="q5_otherContainer">
+                                <input type="text" id="q5_otherInput" class="other-input" placeholder="Please share your thoughts..." maxlength="100" data-question="5">
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="navigation-buttons">
+                        <button type="button" class="nav-btn btn-back" data-prev="4">
+                            ← Back
+                        </button>
+                        <button type="button" class="nav-btn btn-submit" id="submitBtn" disabled>
+                            Submit Survey ✓
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="summary-container" id="summarySection">
+                <div class="prompt-container">
+                    <div class="summary-header">
+                        <div class="summary-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <h2 class="summary-title">Thank You!</h2>
+                        <p class="summary-subtitle">Your responses have been recorded successfully</p>
+                    </div>
+
+                    <div class="summary-responses" id="summaryResponses">
+                        <!-- Responses will be populated here -->
+                    </div>
+
+                    <div class="navigation-buttons" style="justify-content: center; margin-top: 32px;">
+                        <button type="button" class="nav-btn btn-next" id="restartBtn">
+                            Take Another Survey ↻
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <footer class="survey-footer">
+            <p>© 2024 ScamShield MY — A National Scam Response Centre Initiative</p>
+            <p style="margin-top: 8px;">
+                <a href="#">Privacy Policy</a> · <a href="#">Terms of Service</a> · <a href="#">Contact Us</a>
+            </p>
+        </footer>
+    </div>
+
+    <div id="feedbackMessage" class="feedback-message"></div>
+    
+    <div class="keyboard-hint" id="keyboardHint">
+        <kbd>↑</kbd> <kbd>↓</kbd> Navigate · <kbd>Enter</kbd> Select · <kbd>Tab</kbd> Next
+    </div>
+
+    <script>
+        class SurveyPrompt {
+            constructor() {
+                this.form = document.getElementById('surveyForm');
+                this.totalQuestions = 5;
+                this.currentQuestion = 1;
+                this.responses = {};
+                this.isTransitioning = false;
+                
+                this.init();
+            }
+
+            init() {
+                // Handle all option selections
+                document.querySelectorAll('.option-input').forEach(input => {
+                    input.addEventListener('change', (e) => this.handleOptionChange(e));
+                });
+
+                // Handle all "other" inputs
+                document.querySelectorAll('.other-input').forEach(input => {
+                    input.addEventListener('input', (e) => this.validateOtherInput(e));
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            this.handleNextClick();
+                        }
+                    });
+                });
+
+                // Handle navigation buttons
+                document.querySelectorAll('.btn-next').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.handleNextClick(e));
+                });
+
+                document.querySelectorAll('.btn-back').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.handleBackClick(e));
+                });
+
+                // Handle submit button
+                document.getElementById('submitBtn').addEventListener('click', (e) => this.handleSubmit(e));
+
+                // Handle restart button
+                document.getElementById('restartBtn').addEventListener('click', () => this.resetForm());
+
+                // Add ripple effect to all buttons
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.addRipple(e));
+                });
+
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+
+                // Show keyboard hint after delay
+                setTimeout(() => {
+                    document.getElementById('keyboardHint').classList.add('visible');
+                }, 2000);
+
+                // Auto-focus first option
+                setTimeout(() => {
+                    const firstOption = document.querySelector('.question-container.active .option-input');
+                    if (firstOption) firstOption.focus();
+                }, 500);
+            }
+
+            handleKeyboard(e) {
+                const activeContainer = document.querySelector('.question-container.active');
+                if (!activeContainer) return;
+
+                const options = Array.from(activeContainer.querySelectorAll('.option-input'));
+                const currentIndex = options.findIndex(opt => opt === document.activeElement);
+
+                switch(e.key) {
+                    case 'ArrowDown':
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
+                        options[nextIndex].focus();
+                        break;
+
+                    case 'ArrowUp':
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        const prevIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
+                        options[prevIndex].focus();
+                        break;
+
+                    case 'Enter':
+                        if (document.activeElement.classList.contains('option-input')) {
+                            e.preventDefault();
+                            document.activeElement.checked = true;
+                            document.activeElement.dispatchEvent(new Event('change'));
+                        }
+                        break;
+
+                    case 'Tab':
+                        // Hide keyboard hint on first tab
+                        document.getElementById('keyboardHint').classList.remove('visible');
+                        break;
+                }
+            }
+
+            handleOptionChange(e) {
+                const input = e.target;
+                const questionNum = input.dataset.question;
+                const container = input.closest('.question-container');
+                const nextBtn = container.querySelector('.btn-next');
+                const submitBtn = container.querySelector('.btn-submit');
+                const otherContainer = container.querySelector('.other-input-container');
+                
+                // Store response
+                this.responses[`q${questionNum}`] = {
+                    value: input.value,
+                    otherText: null
+                };
+
+                // Enable next/submit button
+                if (nextBtn) nextBtn.disabled = false;
+                if (submitBtn) submitBtn.disabled = false;
+
+                // Handle "Other" option
+                if (otherContainer) {
+                    if (input.value === 'other') {
+                        otherContainer.classList.add('visible');
+                        const otherInput = otherContainer.querySelector('.other-input');
+                        setTimeout(() => otherInput.focus(), 100);
+                    } else {
+                        otherContainer.classList.remove('visible');
+                        const otherInput = otherContainer.querySelector('.other-input');
+                        if (otherInput) otherInput.value = '';
+                    }
+                }
+
+                // Auto-advance after selection (with delay for visual feedback)
+                if (input.value !== 'other') {
+                    const questionNum = parseInt(container.dataset.question);
+                    if (questionNum < this.totalQuestions) {
+                        setTimeout(() => {
+                            this.handleNextClick();
+                        }, 400);
+                    }
+                }
+            }
+
+            validateOtherInput(e) {
+                const input = e.target;
+                const questionNum = input.dataset.question;
+                const container = input.closest('.question-container');
+                const otherOption = container.querySelector('input[value="other"]');
+                const nextBtn = container.querySelector('.btn-next');
+                const submitBtn = container.querySelector('.btn-submit');
+
+                if (otherOption.checked) {
+                    if (input.value.trim()) {
+                        this.responses[`q${questionNum}`].otherText = input.value.trim();
+                        if (nextBtn) nextBtn.disabled = false;
+                        if (submitBtn) submitBtn.disabled = false;
+                    } else {
+                        if (nextBtn) nextBtn.disabled = true;
+                        if (submitBtn) submitBtn.disabled = true;
+                    }
+                }
+            }
+
+            handleNextClick(e) {
+                if (this.isTransitioning) return;
+                
+                const currentContainer = document.querySelector('.question-container.active');
+                const nextBtn = currentContainer.querySelector('.btn-next');
+                
+                if (nextBtn && !nextBtn.disabled) {
+                    const nextQuestion = parseInt(nextBtn.dataset.next);
+                    this.showQuestion(nextQuestion);
+                }
+            }
+
+            handleBackClick(e) {
+                if (this.isTransitioning) return;
+                
+                const btn = e.currentTarget;
+                const prevQuestion = parseInt(btn.dataset.prev);
+                this.showQuestion(prevQuestion);
+            }
+
+            showQuestion(questionNum) {
+                if (this.isTransitioning) return;
+                this.isTransitioning = true;
+
+                const currentContainer = document.querySelector('.question-container.active');
+                const targetContainer = document.querySelector(`.question-container[data-question="${questionNum}"]`);
+
+                if (currentContainer && targetContainer && currentContainer !== targetContainer) {
+                    // Animate out
+                    currentContainer.classList.add('exiting');
+                    
+                    setTimeout(() => {
+                        currentContainer.classList.remove('active', 'exiting');
+                        targetContainer.classList.add('active');
+                        this.currentQuestion = questionNum;
+                        this.updateProgress();
+                        this.scrollToTop();
+                        
+                        // Focus first option
+                        setTimeout(() => {
+                            const firstOption = targetContainer.querySelector('.option-input');
+                            if (firstOption) firstOption.focus();
+                        }, 100);
+                        
+                        this.isTransitioning = false;
+                    }, 300);
+                } else {
+                    this.isTransitioning = false;
+                }
+            }
+
+            scrollToTop() {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            }
+
+            updateProgress() {
+                const progressFill = document.getElementById('progressFill');
+                const progressCount = document.getElementById('progressCount');
+                const percentage = (this.currentQuestion / this.totalQuestions) * 100;
+                
+                progressFill.style.width = `${percentage}%`;
+                progressCount.textContent = `Question ${this.currentQuestion} of ${this.totalQuestions}`;
+            }
+
+            handleSubmit(e) {
+                e.preventDefault();
+                
+                const currentContainer = document.querySelector('.question-container.active');
+                const selectedOption = currentContainer.querySelector('input[type="radio"]:checked');
+                
+                if (!selectedOption) {
+                    this.showMessage('Please select an option', 'warning');
+                    return;
+                }
+
+                if (selectedOption.value === 'other') {
+                    const otherInput = currentContainer.querySelector('.other-input');
+                    if (!otherInput.value.trim()) {
+                        this.showMessage('Please specify your answer', 'warning');
+                        return;
+                    }
+                }
+
+                // Prepare response data
+                const responseData = {
+                    responses: this.responses,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    language: navigator.language
+                };
+
+                // Show loading state
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.classList.add('btn-loading');
+                submitBtn.disabled = true;
+                
+                // Submit response
+                this.submitResponse(responseData);
+            }
+
+            async submitResponse(data) {
+                try {
+                    // Simulate network delay
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    // Replace this with actual API call
+                    // const response = await fetch('/api/survey', {
+                    //     method: 'POST',
+                    //     headers: { 'Content-Type': 'application/json' },
+                    //     body: JSON.stringify(data)
+                    // });
+                    
+                    console.log('Survey response:', data);
+                    
+                    // Show summary
+                    this.showSummary();
+                    
+                } catch (error) {
+                    console.error('Submission error:', error);
+                    this.showMessage('Failed to submit. Please try again.', 'error');
+                    
+                    const submitBtn = document.getElementById('submitBtn');
+                    submitBtn.classList.remove('btn-loading');
+                    submitBtn.disabled = false;
+                }
+            }
+
+            showSummary() {
+                // Hide all questions
+                document.querySelectorAll('.question-container').forEach(q => {
+                    q.classList.remove('active');
+                });
+
+                // Hide progress
+                document.getElementById('progressContainer').style.display = 'none';
+
+                // Populate summary
+                const summaryResponses = document.getElementById('summaryResponses');
+                const questionLabels = {
+                    'q1': 'How did you hear about us?',
+                    'q2': 'Primary purpose for using ScamShield MY?',
+                    'q3': 'Overall experience rating?',
+                    'q4': 'Most useful feature?',
+                    'q5': 'Likelihood to recommend?'
+                };
+
+                const valueLabels = {
+                    'social_media': 'Social Media',
+                    'friend': 'Friend/Family/Colleague',
+                    'search': 'Search Engine',
+                    'news': 'News/Media',
+                    'government': 'Government Agency',
+                    'check_scam': 'Check for Scam',
+                    'report_scam': 'Report a Scam',
+                    'learn': 'Learn About Scams',
+                    'verify': 'Verify Business/Offer',
+                    'excellent': 'Excellent',
+                    'good': 'Good',
+                    'average': 'Average',
+                    'poor': 'Poor',
+                    'phone_check': 'Phone Number Checker',
+                    'website_check': 'Website Safety Checker',
+                    'sms_check': 'SMS Analyzer',
+                    'reporting': 'Scam Reporting System',
+                    'education': 'Educational Resources',
+                    'very_likely': 'Very Likely',
+                    'likely': 'Likely',
+                    'neutral': 'Neutral',
+                    'unlikely': 'Unlikely',
+                    'other': 'Other'
+                };
+
+                let summaryHTML = '';
+                let index = 0;
+                for (const [key, response] of Object.entries(this.responses)) {
+                    const displayValue = response.value === 'other' 
+                        ? response.otherText 
+                        : (valueLabels[response.value] || response.value);
+                    
+                    summaryHTML += `
+                        <div class="response-item" style="animation-delay: ${index * 0.1}s">
+                            <div class="response-question">${questionLabels[key] || key}</div>
+                            <div class="response-answer">
+                                <span>${displayValue}</span>
+                                <button type="button" class="edit-btn" data-question="${key.replace('q', '')}">Edit</button>
+                            </div>
+                        </div>
+                    `;
+                    index++;
+                }
+
+                summaryResponses.innerHTML = summaryHTML;
+
+                // Add edit button handlers
+                summaryResponses.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const questionNum = e.target.dataset.question;
+                        document.getElementById('progressContainer').style.display = 'block';
+                        document.getElementById('summarySection').classList.remove('active');
+                        this.showQuestion(parseInt(questionNum));
+                    });
+                });
+
+                // Show summary section
+                document.getElementById('summarySection').classList.add('active');
+                this.scrollToTop();
+            }
+
+            showMessage(text, type) {
+                const feedbackMessage = document.getElementById('feedbackMessage');
+                feedbackMessage.textContent = text;
+                feedbackMessage.className = `feedback-message ${type} visible`;
+                
+                setTimeout(() => {
+                    feedbackMessage.classList.remove('visible');
+                }, 3000);
+            }
+
+            resetForm() {
+                // Reset form
+                this.form.reset();
+                this.responses = {};
+                this.currentQuestion = 1;
+
+                // Reset all buttons
+                document.querySelectorAll('.btn-next').forEach(btn => btn.disabled = true);
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('submitBtn').classList.remove('btn-loading');
+
+                // Reset other input containers
+                document.querySelectorAll('.other-input-container').forEach(container => {
+                    container.classList.remove('visible');
+                });
+
+                // Show progress
+                document.getElementById('progressContainer').style.display = 'block';
+
+                // Hide summary
+                document.getElementById('summarySection').classList.remove('active');
+
+                // Show first question
+                const firstQuestion = document.querySelector('.question-container[data-question="1"]');
+                document.querySelectorAll('.question-container').forEach(q => q.classList.remove('active'));
+                firstQuestion.classList.add('active');
+                
+                this.updateProgress();
+                this.scrollToTop();
+
+                // Focus first option
+                setTimeout(() => {
+                    const firstOption = firstQuestion.querySelector('.option-input');
+                    if (firstOption) firstOption.focus();
+                }, 100);
+            }
+
+            addRipple(event) {
+                const button = event.currentTarget;
+                const rect = button.getBoundingClientRect();
+                const ripple = document.createElement('span');
+                const size = Math.max(rect.width, rect.height);
+                
+                ripple.className = 'ripple';
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (event.clientX - rect.left - size / 2) + 'px';
+                ripple.style.top = (event.clientY - rect.top - size / 2) + 'px';
+                
+                button.appendChild(ripple);
+                
+                ripple.addEventListener('animationend', () => ripple.remove());
+            }
+        }
+
+        // Initialize the survey prompt when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new SurveyPrompt();
+        });
+    </script>
+</body>
+</html>

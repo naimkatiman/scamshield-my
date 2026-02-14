@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.3), 0 0 60px rgba(6, 182, 212, 0.1);
+    --glow-red: 0 0 20px rgba(239, 68, 68, 0.3), 0 0 60px rgba(239, 68, 68, 0.1);
+    --glow-green: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 60px rgba(16, 185, 129, 0.1);
+    --glow-amber: 0 0 20px rgba(234, 179, 8, 0.3), 0 0 60px rgba(234, 179, 8, 0.1);
+    color-scheme: dark;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(6, 182, 212, 0.3) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(6, 182, 212, 0.3);
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.5);
+  }
+
+  ::selection {
+    background: rgba(6, 182, 212, 0.3);
+    color: #e2e8f0;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply relative overflow-hidden rounded-xl border border-white/[0.06] bg-noir-850/80 backdrop-blur-xl;
+    box-shadow:
+      0 0 0 1px rgba(6, 182, 212, 0.04),
+      0 4px 24px -4px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent);
+    opacity: 0.6;
+  }
+
+  .glass-card-glow {
+    @apply glass-card;
+    box-shadow:
+      0 0 0 1px rgba(6, 182, 212, 0.08),
+      0 0 30px -8px rgba(6, 182, 212, 0.15),
+      0 4px 24px -4px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-card-threat {
+    @apply glass-card;
+    border-color: rgba(239, 68, 68, 0.15);
+    box-shadow:
+      0 0 0 1px rgba(239, 68, 68, 0.06),
+      0 0 30px -8px rgba(239, 68, 68, 0.1),
+      0 4px 24px -4px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-card-threat::before {
+    background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.4), transparent);
+  }
+
+  .stat-value {
+    @apply font-display text-3xl font-bold tracking-tight;
+    text-shadow: 0 0 30px currentColor;
+  }
+
+  .section-title {
+    @apply font-display text-xs font-semibold uppercase tracking-[0.2em] text-cyber/70;
+  }
+
+  .data-label {
+    @apply font-mono text-[11px] uppercase tracking-widest text-slate-500;
+  }
+
+  .scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .scan-line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(6, 182, 212, 0.06),
+      rgba(6, 182, 212, 0.12),
+      rgba(6, 182, 212, 0.06),
+      transparent
+    );
+    animation: scan 4s ease-in-out infinite;
+  }
+
+  .live-dot {
+    @apply relative inline-block h-2 w-2 rounded-full bg-safe;
+  }
+
+  .live-dot::after {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-safe;
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  .threat-badge-critical {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-threat-critical/30 bg-threat-critical/10 px-2.5 py-1 font-mono text-xs font-semibold text-threat-critical;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  }
+
+  .threat-badge-high {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-threat-high/30 bg-threat-high/10 px-2.5 py-1 font-mono text-xs font-semibold text-threat-high;
+  }
+
+  .threat-badge-medium {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-threat-medium/30 bg-threat-medium/10 px-2.5 py-1 font-mono text-xs font-semibold text-threat-medium;
+  }
+
+  .threat-badge-low {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-threat-low/30 bg-threat-low/10 px-2.5 py-1 font-mono text-xs font-semibold text-threat-low;
+  }
+
+  .heatmap-cell {
+    @apply relative flex items-center justify-center rounded-md border border-white/[0.04] font-mono text-xs transition-all duration-200;
+  }
+
+  .heatmap-cell:hover {
+    @apply scale-110 border-white/10;
+    z-index: 10;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(6, 182, 212, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .gradient-text-cyber {
+    @apply bg-gradient-to-r from-cyber to-cyber-bright bg-clip-text text-transparent;
+  }
+
+  .gradient-text-threat {
+    @apply bg-gradient-to-r from-threat-critical to-threat-high bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+  .stagger-7 { animation-delay: 0.35s; }
+  .stagger-8 { animation-delay: 0.4s; }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
+  }
+
+  .text-glow-red {
+    text-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 0 40px rgba(239, 68, 68, 0.2);
+  }
+
+  .text-glow-green {
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.2);
+  }
+
+  .border-glow-cyan {
+    box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.2), inset 0 0 15px -3px rgba(6, 182, 212, 0.05);
+  }
+}

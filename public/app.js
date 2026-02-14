@@ -18,6 +18,7 @@ const state = {
   completedTaskIds: new Set(),
   auth: null,
   lang: localStorage.getItem("scamshield-lang") || "en",
+  activeFlowRequestController: null,
 };
 
 const aiState = {
@@ -27,11 +28,20 @@ const aiState = {
   inlineStreaming: false,
 };
 
+const REQUEST_TIMEOUT_MS = 15_000;
+const FOCUSABLE_SELECTOR = "a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+function getCookieValue(name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 /* ── Auth ── */
 
 async function initAuth() {
   try {
-    const data = await fetch("/api/auth/me").then((r) => r.json());
+    const data = await fetchJSON("/api/auth/me", { method: "GET" });
     state.auth = data;
 
     const loginEl = $("auth-login");
@@ -63,7 +73,7 @@ async function initAuth() {
       // Hide sign-in CTA links when authenticated
       document.querySelectorAll(".hero-signin-link").forEach(el => el.classList.add("hidden"));
     } else {
-      const quotaRes = await fetch("/api/quota").then((r) => r.json());
+      const quotaRes = await fetchJSON("/api/quota", { method: "GET" });
       if (quotaBadge && quotaRes) {
         quotaBadge.classList.remove("hidden");
         quotaText.textContent = `${quotaRes.remaining}/${quotaRes.limit} free — Sign in for 30/day`;
@@ -89,12 +99,24 @@ function setLanguage(lang) {
 
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.dataset.i18n;
-    if (t[key]) el.innerHTML = t[key];
+    if (!t[key]) return;
+    const value = t[key];
+    if (value.includes("<")) {
+      // Markup is sourced from local translation bundles only.
+      el.innerHTML = value;
+    } else {
+      el.textContent = value;
+    }
   });
 
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
     const key = el.dataset.i18nPlaceholder;
     if (t[key]) el.placeholder = t[key];
+  });
+
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((el) => {
+    const key = el.dataset.i18nAriaLabel;
+    if (t[key]) el.setAttribute("aria-label", t[key]);
   });
 }
 
@@ -144,23 +166,33 @@ function initModeToggle() {
 
 /* ── Inline AI Chat (AI Mode) ── */
 
-function appendInlineAiMessage(role, content) {
-  const container = $("ai-chat-messages-inline");
+function appendAiMessageToContainer(containerId, role, content) {
+  const container = $(containerId);
   if (!container) return null;
 
   const msg = document.createElement("div");
   msg.className = `ai-msg ai-msg--${role}`;
 
+  const bubble = document.createElement("div");
+  bubble.className = "ai-msg-bubble";
+  const paragraph = document.createElement("p");
+  bubble.appendChild(paragraph);
+
   if (role === "assistant") {
-    msg.innerHTML = `
-      <div class="ai-msg-avatar">
-        <svg class="icon"><use href="#icon-shield"></use></svg>
-      </div>
-      <div class="ai-msg-bubble typing-effect"><p></p></div>
-    `;
-    if (content) msg.querySelector("p").innerHTML = simpleMarkdown(content);
+    const avatar = document.createElement("div");
+    avatar.className = "ai-msg-avatar";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("class", "icon");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "#icon-shield");
+    icon.appendChild(use);
+    avatar.appendChild(icon);
+    bubble.classList.add("typing-effect");
+    if (content) paragraph.innerHTML = simpleMarkdown(content);
+    msg.append(avatar, bubble);
   } else {
-    msg.innerHTML = `<div class="ai-msg-bubble"><p>${escapeHtml(content)}</p></div>`;
+    paragraph.textContent = content;
+    msg.appendChild(bubble);
   }
 
   container.appendChild(msg);
@@ -168,73 +200,90 @@ function appendInlineAiMessage(role, content) {
   return msg;
 }
 
-async function sendInlineAiMessage(userText) {
-  if (aiState.inlineStreaming || !userText.trim()) return;
+async function sendAiMessageFlow(userText, config) {
+  const text = String(userText || "").trim();
+  if (!text || aiState[config.streamingKey]) return;
 
-  const input = $("ai-chat-input-inline");
-  const sendBtn = $("ai-chat-send-inline");
+  const messages = aiState[config.messagesKey];
+  const input = $(config.inputId);
+  const sendBtn = $(config.sendBtnId);
   const btnText = sendBtn?.querySelector(".btn-text");
   const btnLoader = sendBtn?.querySelector(".btn-loader");
 
-  // Hide quick actions after first message
-  const quickActions = $("ai-quick-actions");
-  if (quickActions) quickActions.classList.add("hidden");
+  if (config.quickActionsId) {
+    const quickActions = $(config.quickActionsId);
+    if (quickActions) quickActions.classList.add("hidden");
+  }
 
-  aiState.inlineMessages.push({ role: "user", content: userText.trim() });
-  appendInlineAiMessage("user", userText.trim());
+  messages.push({ role: "user", content: text });
+  appendAiMessageToContainer(config.containerId, "user", text);
 
   if (input) { input.value = ""; input.style.height = "auto"; }
 
-  aiState.inlineStreaming = true;
+  aiState[config.streamingKey] = true;
   if (sendBtn) sendBtn.disabled = true;
   if (btnText) btnText.classList.add("hidden");
   if (btnLoader) btnLoader.classList.remove("hidden");
 
-  const assistantMsg = appendInlineAiMessage("assistant", "");
+  const assistantMsg = appendAiMessageToContainer(config.containerId, "assistant", "");
   const bubble = assistantMsg?.querySelector(".ai-msg-bubble");
+  const bubbleParagraph = bubble?.querySelector("p");
   let fullContent = "";
 
   try {
-    const response = await fetch("/api/ai/chat", {
+    const data = await fetchJSON("/api/ai/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: aiState.inlineMessages.map(m => ({ role: m.role, content: m.content })) }),
+      body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
     });
-
-    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-
-    const data = await response.json();
     const assistantText = data.message || data.error || "Error processing request.";
 
-    const p = bubble.querySelector("p");
-    p.parentElement.classList.add("typing-effect");
+    bubble?.classList.add("typing-effect");
 
     const words = assistantText.split(" ");
     for (let i = 0; i < words.length; i++) {
       fullContent += (i > 0 ? " " : "") + words[i];
-      p.innerHTML = simpleMarkdown(fullContent);
+      if (bubbleParagraph) {
+        bubbleParagraph.innerHTML = simpleMarkdown(fullContent);
+      }
 
-      const container = $("ai-chat-messages-inline");
+      const container = $(config.containerId);
       if (container) container.scrollTop = container.scrollHeight;
 
       const delay = Math.max(5, Math.random() * 20);
       if (i < words.length - 1) await new Promise(r => setTimeout(r, delay));
     }
 
-    aiState.inlineMessages.push({ role: "assistant", content: assistantText });
-    p.parentElement.classList.remove("typing-effect");
+    messages.push({ role: "assistant", content: assistantText });
+    bubble?.classList.remove("typing-effect");
 
   } catch (error) {
     console.error(error);
-    if (bubble) bubble.innerHTML = `<p class="error-msg">Error: ${escapeHtml(error.message)}</p>`;
-    aiState.inlineMessages.push({ role: "assistant", content: `Error: ${error.message}` });
+    if (bubble) {
+      bubble.innerHTML = "";
+      const p = document.createElement("p");
+      p.className = "error-msg";
+      p.textContent = `Error: ${error.message}`;
+      bubble.appendChild(p);
+    }
+    messages.push({ role: "assistant", content: `Error: ${error.message}` });
   } finally {
-    aiState.inlineStreaming = false;
+    aiState[config.streamingKey] = false;
     if (sendBtn) sendBtn.disabled = false;
     if (btnText) btnText.classList.remove("hidden");
     if (btnLoader) btnLoader.classList.add("hidden");
     if (input) input.focus();
   }
+}
+
+async function sendInlineAiMessage(userText) {
+  return sendAiMessageFlow(userText, {
+    messagesKey: "inlineMessages",
+    streamingKey: "inlineStreaming",
+    inputId: "ai-chat-input-inline",
+    sendBtnId: "ai-chat-send-inline",
+    containerId: "ai-chat-messages-inline",
+    quickActionsId: "ai-quick-actions",
+  });
 }
 
 function initInlineAiChat() {
@@ -346,13 +395,60 @@ function showReportModeBadge(text, type) {
 /* ── Utilities ── */
 
 async function fetchJSON(url, options = {}) {
-  const response = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  const response = await fetchWithTimeout(url, options);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
   return data;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const {
+    timeoutMs = REQUEST_TIMEOUT_MS,
+    signal: externalSignal,
+    headers: inputHeaders,
+    method: methodRaw,
+    ...rest
+  } = options;
+
+  const method = (methodRaw || "GET").toUpperCase();
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...(inputHeaders || {}),
+  });
+
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrfToken = getCookieValue("scamshield_csrf");
+    if (csrfToken && !headers.has("X-CSRF-Token")) {
+      headers.set("X-CSRF-Token", csrfToken);
+    }
+  }
+
+  const controller = new AbortController();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener("abort", () => controller.abort(externalSignal.reason), { once: true });
+    }
+  }
+
+  const timeout = setTimeout(() => controller.abort("timeout"), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...rest,
+      method,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function $(id) {
@@ -379,12 +475,19 @@ function showToast(message, type = "success") {
   if (!container) return;
   const toast = document.createElement("div");
   toast.className = `toast toast--${type}`;
+  toast.setAttribute("role", "status");
 
   const iconId = type === "error" ? "icon-alert-triangle" : "icon-check-circle";
-  toast.innerHTML = `
-    <svg class="icon toast-icon"><use href="#${iconId}"></use></svg>
-    <span>${escapeHtml(message)}</span>
-  `;
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", "icon toast-icon");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `#${iconId}`);
+  icon.appendChild(use);
+
+  const text = document.createElement("span");
+  text.textContent = String(message);
+
+  toast.append(icon, text);
 
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
@@ -396,12 +499,23 @@ function showToastWithRetry(message, retryFn) {
   const toast = document.createElement("div");
   toast.className = "toast toast--error";
   toast.style.pointerEvents = "auto";
-  toast.innerHTML = `
-    <svg class="icon toast-icon"><use href="#icon-alert-triangle"></use></svg>
-    <span>${escapeHtml(message)}</span>
-    <button class="toast-action">Retry</button>
-  `;
-  const retryBtn = toast.querySelector(".toast-action");
+  toast.setAttribute("role", "alert");
+
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", "icon toast-icon");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "#icon-alert-triangle");
+  icon.appendChild(use);
+
+  const text = document.createElement("span");
+  text.textContent = String(message);
+
+  const retryBtn = document.createElement("button");
+  retryBtn.className = "toast-action";
+  retryBtn.type = "button";
+  retryBtn.textContent = "Retry";
+
+  toast.append(icon, text, retryBtn);
   retryBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     toast.remove();
@@ -632,6 +746,10 @@ function buildReportPayloadFromVerdict(verdict, input) {
     UNKNOWN: `Suspicious activity flagged: ${input.value.substring(0, 30)}`,
   };
 
+  const sources = Array.isArray(verdict.sources) && verdict.sources.length > 0
+    ? verdict.sources.join(", ")
+    : "none";
+
   return {
     incidentTitle: titleMap[verdict.verdict] || `Investigation: ${input.value.substring(0, 40)}`,
     scamType: inferScamType(verdict.reasons),
@@ -640,7 +758,7 @@ function buildReportPayloadFromVerdict(verdict, input) {
     suspects: [input.value],
     losses: $("flow-loss-input")?.value || "Unknown",
     actionsTaken: ["Scanned with ScamShield MY"],
-    extraNotes: `ScamShield risk score: ${verdict.score}/100. Verdict: ${verdict.verdict}. Reasons: ${verdict.reasons.join("; ")}`,
+    extraNotes: `ScamShield risk score: ${verdict.score}/100. Verdict: ${verdict.verdict}. Sources: ${sources}. Reasons: ${verdict.reasons.join("; ")}`,
   };
 }
 
@@ -707,6 +825,12 @@ async function onFlowSubmit(event) {
   hide("phase-footer-actions");
   hide("ai-fab");
 
+  if (state.activeFlowRequestController) {
+    state.activeFlowRequestController.abort("replaced");
+  }
+  const controller = new AbortController();
+  state.activeFlowRequestController = controller;
+
   try {
     const verdictResponse = await fetchJSON("/api/verdict", {
       method: "POST",
@@ -715,6 +839,7 @@ async function onFlowSubmit(event) {
         value: state.input.value,
         chain: state.input.chain || undefined,
       }),
+      signal: controller.signal,
     });
 
     state.verdict = verdictResponse;
@@ -735,11 +860,13 @@ async function onFlowSubmit(event) {
       await generateRecoveryKit(verdictResponse);
     }
 
-    clearInterval(loadInterval); // Clear loading interval
-
   } catch (error) {
     showToastWithRetry(error.message, () => onFlowSubmit(event));
   } finally {
+    if (state.activeFlowRequestController === controller) {
+      state.activeFlowRequestController = null;
+    }
+    clearInterval(loadInterval);
     submitBtn.disabled = false;
     btnText.classList.remove("hidden");
     btnLoader.classList.add("hidden");
@@ -777,10 +904,13 @@ function renderVerdictPhase(payload) {
   payload.reasons.slice(0, 3).forEach((reason, i) => {
     const card = document.createElement("div");
     card.className = "reason-card";
-    card.innerHTML = `
-      <span class="reason-number">${i + 1}</span>
-      <span class="reason-text">${escapeHtml(reason)}</span>
-    `;
+    const number = document.createElement("span");
+    number.className = "reason-number";
+    number.textContent = `${i + 1}`;
+    const text = document.createElement("span");
+    text.className = "reason-text";
+    text.textContent = reason;
+    card.append(number, text);
     reasonsContainer.appendChild(card);
   });
 
@@ -1112,9 +1242,8 @@ function initPdfExport() {
     if (btnText) btnText.textContent = "Generating...";
 
     try {
-      const response = await fetch("/api/report/export-pdf", {
+      const response = await fetchWithTimeout("/api/report/export-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pdfPayload),
       });
 
@@ -1217,9 +1346,8 @@ function initWarningCardCustomization() {
     btn.disabled = true;
 
     try {
-      const response = await fetch("/api/warning-card/preview", {
+      const response = await fetchWithTimeout("/api/warning-card/preview", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -1414,29 +1542,67 @@ function showAiFab() {
   $("ai-fab")?.classList.remove("hidden");
 }
 
+let drawerPreviouslyFocused = null;
+
+function closeAiDrawer() {
+  const drawer = $("ai-chat-drawer");
+  if (!drawer || drawer.classList.contains("hidden")) return;
+  drawer.classList.remove("ai-drawer--open");
+  drawer.removeEventListener("keydown", onAiDrawerKeydown);
+  setTimeout(() => drawer.classList.add("hidden"), 300);
+  if (drawerPreviouslyFocused && typeof drawerPreviouslyFocused.focus === "function") {
+    drawerPreviouslyFocused.focus();
+  }
+}
+
+function onAiDrawerKeydown(event) {
+  const drawer = $("ai-chat-drawer");
+  if (!drawer || drawer.classList.contains("hidden")) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeAiDrawer();
+    return;
+  }
+
+  if (event.key !== "Tab") return;
+  const focusables = Array.from(drawer.querySelectorAll(FOCUSABLE_SELECTOR));
+  if (focusables.length === 0) return;
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function openAiDrawer(triggerElement) {
+  const drawer = $("ai-chat-drawer");
+  if (!drawer) return;
+  drawerPreviouslyFocused = triggerElement || document.activeElement;
+  drawer.classList.remove("hidden");
+  // Force reflow
+  void drawer.offsetHeight;
+  drawer.classList.add("ai-drawer--open");
+  drawer.addEventListener("keydown", onAiDrawerKeydown);
+  $("ai-chat-input")?.focus();
+}
+
 function initAiDrawer() {
-  $("ai-fab")?.addEventListener("click", () => {
-    const drawer = $("ai-chat-drawer");
-    if (drawer) {
-      drawer.classList.remove("hidden");
-      // Force reflow
-      void drawer.offsetHeight;
-      drawer.classList.add("ai-drawer--open");
-      $("ai-chat-input")?.focus();
-    }
+  $("ai-fab")?.addEventListener("click", (event) => {
+    openAiDrawer(event.currentTarget);
   });
 
   $("flow-open-ai")?.addEventListener("click", () => {
     $("ai-fab")?.click();
   });
 
-  $("ai-drawer-close")?.addEventListener("click", () => {
-    const drawer = $("ai-chat-drawer");
-    if (drawer) {
-      drawer.classList.remove("ai-drawer--open");
-      setTimeout(() => drawer.classList.add("hidden"), 300);
-    }
-  });
+  $("ai-drawer-close")?.addEventListener("click", closeAiDrawer);
 
   // AI Chat form
   const form = $("ai-chat-form");
@@ -1479,93 +1645,14 @@ function simpleMarkdown(text) {
     .replace(/\n/g, "<br>");
 }
 
-function appendAiMessage(role, content) {
-  const container = $("ai-chat-messages");
-  if (!container) return null;
-
-  const msg = document.createElement("div");
-  msg.className = `ai-msg ai-msg--${role}`;
-
-  if (role === "assistant") {
-    msg.innerHTML = `
-      <div class="ai-msg-avatar">
-        <svg class="icon"><use href="#icon-shield"></use></svg>
-      </div>
-      <div class="ai-msg-bubble typing-effect"><p></p></div>
-    `;
-    if (content) msg.querySelector("p").innerHTML = simpleMarkdown(content);
-  } else {
-    msg.innerHTML = `<div class="ai-msg-bubble"><p>${escapeHtml(content)}</p></div>`;
-  }
-
-  container.appendChild(msg);
-  container.scrollTop = container.scrollHeight;
-  return msg;
-}
-
 async function sendAiMessage(userText) {
-  if (aiState.streaming || !userText.trim()) return;
-
-  const input = $("ai-chat-input");
-  const sendBtn = $("ai-chat-send");
-  const btnText = sendBtn?.querySelector(".btn-text");
-  const btnLoader = sendBtn?.querySelector(".btn-loader");
-
-  aiState.messages.push({ role: "user", content: userText.trim() });
-  appendAiMessage("user", userText.trim());
-
-  if (input) { input.value = ""; input.style.height = "auto"; }
-
-  aiState.streaming = true;
-  if (sendBtn) sendBtn.disabled = true;
-  if (btnText) btnText.classList.add("hidden");
-  if (btnLoader) btnLoader.classList.remove("hidden");
-
-  const assistantMsg = appendAiMessage("assistant", "");
-  const bubble = assistantMsg?.querySelector(".ai-msg-bubble");
-  let fullContent = "";
-
-  try {
-    const response = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: aiState.messages.map(m => ({ role: m.role, content: m.content })) }),
-    });
-
-    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-
-    const data = await response.json();
-    const assistantText = data.message || data.error || "Error processing request.";
-
-    const p = bubble.querySelector("p");
-    p.parentElement.classList.add("typing-effect");
-
-    const words = assistantText.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      fullContent += (i > 0 ? " " : "") + words[i];
-      p.innerHTML = simpleMarkdown(fullContent);
-
-      const container = $("ai-chat-messages");
-      if (container) container.scrollTop = container.scrollHeight;
-
-      const delay = Math.max(5, Math.random() * 20);
-      if (i < words.length - 1) await new Promise(r => setTimeout(r, delay));
-    }
-
-    aiState.messages.push({ role: "assistant", content: assistantText });
-    p.parentElement.classList.remove("typing-effect");
-
-  } catch (error) {
-    console.error(error);
-    if (bubble) bubble.innerHTML = `<p class="error-msg">Error: ${escapeHtml(error.message)}</p>`;
-    aiState.messages.push({ role: "assistant", content: `Error: ${error.message}` });
-  } finally {
-    aiState.streaming = false;
-    if (sendBtn) sendBtn.disabled = false;
-    if (btnText) btnText.classList.remove("hidden");
-    if (btnLoader) btnLoader.classList.add("hidden");
-    if (input) input.focus();
-  }
+  return sendAiMessageFlow(userText, {
+    messagesKey: "messages",
+    streamingKey: "streaming",
+    inputId: "ai-chat-input",
+    sendBtnId: "ai-chat-send",
+    containerId: "ai-chat-messages",
+  });
 }
 
 /* ── Visuals ── */

@@ -4,46 +4,50 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-interface RateCounter {
+interface RateCounterRow {
   count: number;
-  resetAt: number;
+  reset_at: number;
 }
 
 export async function checkRateLimit(
-  kv: KVNamespace,
+  db: D1Database,
   key: string,
   limit: number,
   windowSeconds: number,
 ): Promise<RateLimitResult> {
   const now = Date.now();
-  const raw = await kv.get(key);
-  let counter: RateCounter = { count: 0, resetAt: now + windowSeconds * 1000 };
+  const safeWindowMs = Math.max(1, Math.floor(windowSeconds)) * 1000;
+  const resetAt = now + safeWindowMs;
 
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as Partial<RateCounter>;
-      if (typeof parsed.count === "number" && typeof parsed.resetAt === "number") {
-        counter = {
-          count: parsed.count,
-          resetAt: parsed.resetAt,
-        };
-      }
-    } catch {
-      counter = { count: 0, resetAt: now + windowSeconds * 1000 };
-    }
-  }
+  await db
+    .prepare(
+      `INSERT INTO rate_limit_counters (counter_key, count, reset_at)
+       VALUES (?, 1, ?)
+       ON CONFLICT(counter_key) DO UPDATE SET
+         count = CASE
+           WHEN rate_limit_counters.reset_at <= ? THEN 1
+           ELSE rate_limit_counters.count + 1
+         END,
+         reset_at = CASE
+           WHEN rate_limit_counters.reset_at <= ? THEN ?
+           ELSE rate_limit_counters.reset_at
+         END,
+         updated_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(key, resetAt, now, now, resetAt)
+    .run();
 
-  if (counter.resetAt <= now) {
-    counter = { count: 0, resetAt: now + windowSeconds * 1000 };
-  }
+  const row = await db
+    .prepare("SELECT count, reset_at FROM rate_limit_counters WHERE counter_key = ?")
+    .bind(key)
+    .first<RateCounterRow>();
 
-  counter.count += 1;
-  const ttl = Math.max(60, Math.ceil((counter.resetAt - now) / 1000));
-  await kv.put(key, JSON.stringify(counter), { expirationTtl: ttl });
+  const count = Number(row?.count ?? 1);
+  const resolvedResetAt = Number(row?.reset_at ?? resetAt);
 
   return {
-    allowed: counter.count <= limit,
-    remaining: Math.max(0, limit - counter.count),
-    resetAt: counter.resetAt,
+    allowed: count <= limit,
+    remaining: Math.max(0, limit - count),
+    resetAt: resolvedResetAt,
   };
 }
