@@ -772,9 +772,13 @@ app.post("/api/verdict", async (c) => {
 });
 
 app.post("/api/report", async (c) => {
+  const startedAt = Date.now();
   const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
   const parsed = reportSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
+    recordCureAction(c.env, "report_submitted", "validation_error", Date.now() - startedAt, {
+      endpoint: "/api/report",
+    });
     return jsonError("Invalid report payload.");
   }
 
@@ -786,7 +790,6 @@ app.post("/api/report", async (c) => {
 
   try {
     let rewardSummary: Awaited<ReturnType<typeof grantReportSubmissionRewards>> | null = null;
-    const startedAt = Date.now();
     const reportId = await createCommunityReport(c.env.DB, report);
     const fingerprint = fingerprintFromIdentifiers(normalizedIdentifiers);
     await upsertPattern(c.env.DB, fingerprint, report.platform, report.category, JSON.stringify(normalizedIdentifiers));
@@ -826,7 +829,7 @@ app.post("/api/report", async (c) => {
     });
   } catch (error) {
     logger.error("report_db_error", { message: error instanceof Error ? error.message : "unknown" });
-    recordCureAction(c.env, "report_submitted", "failed", 0, {
+    recordCureAction(c.env, "report_submitted", "failed", Date.now() - startedAt, {
       endpoint: "/api/report",
     });
     return jsonError("Report submission failed. Please try again.", 503);
@@ -856,6 +859,9 @@ app.post("/api/report/generate-ai", async (c) => {
   const startedAt = Date.now();
   const parsed = reportGenerateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
+    recordCureAction(c.env, "ai_report_generated", "validation_error", Date.now() - startedAt, {
+      endpoint: "/api/report/generate-ai",
+    });
     return jsonError("Invalid report generation payload.");
   }
 
@@ -863,6 +869,10 @@ app.post("/api/report/generate-ai", async (c) => {
   if (!apiKey) {
     // Fallback to template if AI is not configured
     const generated = generateIncidentReports(parsed.data);
+    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
+      endpoint: "/api/report/generate-ai",
+      reason: "ai_not_configured",
+    });
     return c.json({ ...generated, mode: "template", fallback: true });
   }
 
@@ -875,6 +885,10 @@ app.post("/api/report/generate-ai", async (c) => {
   if (usedToday >= dailyLimit) {
     // Fallback to template if quota exceeded
     const generated = generateIncidentReports(parsed.data);
+    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
+      endpoint: "/api/report/generate-ai",
+      reason: "quota_exceeded",
+    });
     return c.json({ ...generated, mode: "template", fallback: true });
   }
 
@@ -905,29 +919,45 @@ REQUIREMENTS:
 - Include specific action requests in each report.
 - Keep each report between 200-400 words.`;
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
-        "X-Title": "ScamShield MY",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview:online",
-        messages: [{ role: "user", content: reportPrompt }],
-        stream: false,
-        max_tokens: 4096,
-        temperature: 0.3,
-      }),
-    });
+  const reportModels: [string, string] = [
+    "google/gemini-3-flash-preview:online",
+    "google/gemini-2.5-flash:online",
+  ];
 
-    if (!response.ok) {
-      throw new Error(`AI API returned ${response.status}`);
+  try {
+    let lastStatus = 0;
+    let data: { choices?: { message?: { content?: string } }[] } | null = null;
+
+    for (const model of reportModels) {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
+          "X-Title": "ScamShield MY",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: reportPrompt }],
+          stream: false,
+          max_tokens: 4096,
+          temperature: 0.3,
+        }),
+      });
+
+      if (response.ok) {
+        data = await response.json() as { choices?: { message?: { content?: string } }[] };
+        break;
+      }
+      lastStatus = response.status;
+      logger.warn("ai_report_upstream_error", { model, status: lastStatus });
     }
 
-    const data = await response.json() as { choices?: { message?: { content?: string } }[] };
+    if (!data) {
+      throw new Error(`AI API returned ${lastStatus}`);
+    }
+
     const content = data.choices?.[0]?.message?.content || "";
 
     // Parse the AI response - try to extract JSON
@@ -966,6 +996,10 @@ REQUIREMENTS:
 
     // AI returned incomplete — fall back
     const generated = generateIncidentReports(parsed.data);
+    recordCureAction(c.env, "ai_report_generated", "fallback", Date.now() - startedAt, {
+      endpoint: "/api/report/generate-ai",
+      reason: "incomplete_ai_response",
+    });
     return c.json({ ...generated, mode: "template", fallback: true });
 
   } catch (error) {
@@ -1020,6 +1054,10 @@ app.post("/api/warning-card", async (c) => {
   if (parsed.data.slug) {
     const slugCheck = validateSlug(parsed.data.slug);
     if (!slugCheck.valid) {
+      recordCureAction(c.env, "warning_card_created", "validation_error", Date.now() - startedAt, {
+        endpoint: "/api/warning-card",
+        reason: "invalid_slug",
+      });
       return jsonError(slugCheck.reason ?? "Invalid slug format.", 422);
     }
   }
@@ -1170,6 +1208,10 @@ app.post("/api/warning-card/customize", async (c) => {
   if (parsed.data.slug) {
     const slugCheck = validateSlug(parsed.data.slug);
     if (!slugCheck.valid) {
+      recordCureAction(c.env, "warning_card_customized", "validation_error", Date.now() - startedAt, {
+        endpoint: "/api/warning-card/customize",
+        reason: "invalid_slug",
+      });
       return jsonError(slugCheck.reason ?? "Invalid slug format.", 422);
     }
   }
@@ -1364,34 +1406,46 @@ app.post("/api/ai/chat", async (c) => {
     ...parsed.data.messages,
   ];
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
-      "X-Title": "ScamShield MY",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview:online",
-      messages,
-      stream: false,
-      max_tokens: 2048,
-      temperature: 0.4,
-    }),
-  });
+  const models: [string, string] = [
+    "google/gemini-3-flash-preview:online",
+    "google/gemini-2.5-flash:online",
+  ];
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "Unknown error");
-    logger.error("ai_chat_upstream_error", { status: response.status, error: errorText });
-    return jsonError("AI service unavailable. Try again shortly.", 502);
+  let lastError: string | null = null;
+  let lastStatus = 0;
+
+  for (const model of models) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
+        "X-Title": "ScamShield MY",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        max_tokens: 2048,
+        temperature: 0.4,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json() as { choices?: { message?: { content?: string } }[] };
+      const message = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
+      await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
+      return c.json({ message });
+    }
+
+    lastStatus = response.status;
+    lastError = await response.text().catch(() => "Unknown error");
+    logger.warn("ai_chat_upstream_error", { model, status: lastStatus, error: lastError });
   }
 
-  const data = await response.json() as { choices?: { message?: { content?: string } }[] };
-  const message = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
-  await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
-
-  return c.json({ message });
+  logger.error("ai_chat_upstream_error", { status: lastStatus, error: lastError });
+  return jsonError("AI service unavailable. Try again shortly.", 502);
 });
 
 /* ─── Dashboard APIs ─── */

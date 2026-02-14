@@ -7,6 +7,9 @@ const CARD_HEIGHT = 630;
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const PDF_SIGNATURE = [37, 80, 68, 70]; // %PDF
 const BROWSER_RENDER_TIMEOUT_MS = 9000;
+const DEFAULT_RENDER_MODE = "auto";
+
+type WarningCardRenderMode = NonNullable<Env["WARNING_CARD_RENDER_MODE"]>;
 
 export function generateSlug(seed: string): string {
   const cleaned = seed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
@@ -353,14 +356,29 @@ function createRasterHtml(svg: string): string {
 }
 
 function browserRenderingBaseUrl(env: Env): string | null {
+  if (env.BROWSER_RENDERING_API_BASE) {
+    return env.BROWSER_RENDERING_API_BASE.replace(/\/$/, "");
+  }
   const accountId = env.BROWSER_RENDERING_ACCOUNT_ID;
   if (!accountId) {
     return null;
   }
-  if (env.BROWSER_RENDERING_API_BASE) {
-    return env.BROWSER_RENDERING_API_BASE.replace(/\/$/, "");
-  }
   return `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering`;
+}
+
+function browserRenderingConfigured(env: Env): boolean {
+  return Boolean(env.CF_BROWSER_RENDERING_TOKEN && browserRenderingBaseUrl(env));
+}
+
+function resolveDesiredRenderMode(env: Env): "png" | "svg" {
+  const configuredMode: WarningCardRenderMode = env.WARNING_CARD_RENDER_MODE ?? DEFAULT_RENDER_MODE;
+  if (configuredMode === "svg") {
+    return "svg";
+  }
+  if (configuredMode === "png") {
+    return "png";
+  }
+  return browserRenderingConfigured(env) ? "png" : "svg";
 }
 
 async function callBrowserRendering(
@@ -482,13 +500,17 @@ export async function storeWarningCard(
   payload: WarningCardPayload,
 ): Promise<string> {
   const startedAt = Date.now();
+  const configuredMode: WarningCardRenderMode = env.WARNING_CARD_RENDER_MODE ?? DEFAULT_RENDER_MODE;
+  const desiredRenderMode = resolveDesiredRenderMode(env);
+  const renderingConfigured = browserRenderingConfigured(env);
+
   let key = `warning-cards/${slug}.svg`;
   let body: Uint8Array | string;
   let contentType = "image/svg+xml";
   let renderMode: "png" | "svg" = "svg";
   const svg = renderWarningCardSvg(payload);
 
-  if (env.WARNING_CARD_RENDER_MODE !== "svg") {
+  if (desiredRenderMode === "png") {
     try {
       body = await renderWarningCardPng(env, payload);
       key = `warning-cards/${slug}.png`;
@@ -497,11 +519,18 @@ export async function storeWarningCard(
     } catch (error) {
       logger.warn("warning_card_png_fallback", {
         slug,
+        configuredMode,
         message: error instanceof Error ? error.message : "unknown",
       });
       body = svg;
     }
   } else {
+    if (configuredMode === "png" && !renderingConfigured) {
+      logger.warn("warning_card_png_unconfigured", {
+        slug,
+        message: "Browser Rendering credentials are missing; storing SVG fallback.",
+      });
+    }
     body = svg;
   }
 
@@ -524,6 +553,7 @@ export async function storeWarningCard(
 
   logger.info("warning_card_rendered", {
     slug,
+    configuredMode,
     renderMode,
     durationMs: Date.now() - startedAt,
   });

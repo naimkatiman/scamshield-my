@@ -104,6 +104,49 @@ describe("warning card rasterization", () => {
     );
   });
 
+  it("stores SVG directly in auto mode when Browser Rendering is not configured", async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response("unexpected", {
+        status: 500,
+      })) as typeof fetch;
+
+    const env = makeEnv({
+      WARNING_CARD_RENDER_MODE: "auto",
+      BROWSER_RENDERING_ACCOUNT_ID: undefined,
+      BROWSER_RENDERING_API_BASE: undefined,
+      CF_BROWSER_RENDERING_TOKEN: undefined,
+    });
+
+    const key = await storeWarningCard(env, "slug-3", payload);
+    expect(key).toBe("warning-cards/slug-3.svg");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("uses explicit Browser Rendering API base without requiring account id", async () => {
+    const pngBytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 9, 9]);
+    globalThis.fetch = vi.fn(async () =>
+      new Response(pngBytes, {
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+        },
+      })) as typeof fetch;
+
+    const env = makeEnv({
+      WARNING_CARD_RENDER_MODE: "auto",
+      BROWSER_RENDERING_ACCOUNT_ID: undefined,
+      BROWSER_RENDERING_API_BASE: "https://example.test/browser-rendering",
+      CF_BROWSER_RENDERING_TOKEN: "token_123",
+    });
+
+    const key = await storeWarningCard(env, "slug-4", payload);
+    expect(key).toBe("warning-cards/slug-4.png");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://example.test/browser-rendering/screenshot",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("renders PDF bytes via Browser Rendering when requested", async () => {
     const pdfBytes = new TextEncoder().encode("%PDF-1.7 mock pdf");
     globalThis.fetch = vi.fn(async () =>

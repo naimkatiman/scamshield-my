@@ -66,11 +66,18 @@ export async function collectProviderSignals(
       } catch (error) {
         const latencyMs = Date.now() - start;
         timings[provider.name] = latencyMs;
-        if (provider.external && isProviderFetchError(error) && error.kind !== "circuit_open") {
-          await recordProviderFailure(env.CACHE_KV, provider.name, error);
-        }
-        const outcome = isProviderFetchError(error) && error.kind === "circuit_open" ? "circuit_open" : "error";
+
         const detail = isErrorWithMessage(error) ? error.message : "provider failed";
+        const normalizedError = isProviderFetchError(error)
+          ? error
+          : new ProviderFetchError(`${provider.name} unexpected error: ${detail}`, "unknown", {
+            retryable: true,
+          });
+
+        if (provider.external && normalizedError.kind !== "circuit_open") {
+          await recordProviderFailure(env.CACHE_KV, provider.name, normalizedError);
+        }
+        const outcome = normalizedError.kind === "circuit_open" ? "circuit_open" : "error";
         recordProviderOutcome(env, provider.name, outcome, latencyMs, detail);
         throw error;
       }

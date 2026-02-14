@@ -103,7 +103,7 @@ export interface Env {
   REGION: string;
   ADMIN_EMAILS?: string;
   PROVIDER_MODE?: "mock" | "live";
-  WARNING_CARD_RENDER_MODE?: "png" | "svg";
+  WARNING_CARD_RENDER_MODE?: "png" | "svg" | "auto";
   BROWSER_RENDERING_ACCOUNT_ID?: string;
   CF_BROWSER_RENDERING_TOKEN?: string;
   BROWSER_RENDERING_API_BASE?: string;

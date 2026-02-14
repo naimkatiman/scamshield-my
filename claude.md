@@ -91,7 +91,7 @@ Product promise:
 - Per-IP/session rate limit in KV: DONE
 - Deep PII masking (nested objects/arrays): DONE
 - SQL LIKE wildcard escape: DONE
-- Tests: 155 tests passing
+- Tests: 188 tests passing
 
 ## Orchestration Board
 
@@ -109,7 +109,7 @@ Product promise:
 - DONE: Normalization engine and risk threshold scoring logic.
 - DONE: Live-mode <2s SLO (1800ms budget) with `Promise.allSettled`.
 - DONE: Usage Quota Enforcement (Free 3 / Login 30) via KV + D1.
-- DONE: Full Test Suite: 155 unit/integration tests passing (`npm run test`).
+- DONE: Full Test Suite: 188 unit/integration tests passing (`npm run test`).
 
 ### Track 03: Visuals & Experience (Digital Frontier)
 **Status**: POLISHED | **Primary Agent**: Agent 3 & 5

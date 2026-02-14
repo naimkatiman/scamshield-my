@@ -4,7 +4,7 @@
 APP_NAME="ScamShield MY"
 REGION="MY"
 PROVIDER_MODE="mock"
-WARNING_CARD_RENDER_MODE="svg"
+WARNING_CARD_RENDER_MODE="auto"
 
 # Comma-separated admin allowlist used during login promotion.
 ADMIN_EMAILS="admin@example.com"

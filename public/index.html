@@ -10,6 +10,7 @@
   <meta property="og:title" content="ScamShield MY - Scam Response Kit">
   <meta property="og:description" content="Most apps detect scams. We handle what happens after.">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="/img/scamshield-preview.svg">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +24,9 @@
 
   <!-- Offline Banner -->
   <div id="offline-banner" class="offline-banner hidden">
-    <svg class="icon"><use href="#icon-alert-triangle"></use></svg>
+    <svg class="icon">
+      <use href="#icon-alert-triangle"></use>
+    </svg>
     <span>You're offline. Some features may not work.</span>
   </div>
 
@@ -79,11 +82,15 @@
         <!-- ============================================================ -->
         <div class="mode-toggle-wrap">
           <button id="mode-ai" class="mode-toggle-btn mode-toggle-btn--active">
-            <svg class="icon"><use href="#icon-sparkles"></use></svg>
+            <svg class="icon">
+              <use href="#icon-sparkles"></use>
+            </svg>
             <span data-i18n="nav.ai_assistant">AI Assistant</span>
           </button>
           <button id="mode-manual" class="mode-toggle-btn">
-            <svg class="icon"><use href="#icon-search"></use></svg>
+            <svg class="icon">
+              <use href="#icon-search"></use>
+            </svg>
             <span data-i18n="nav.manual_toolkit">Manual Toolkit</span>
           </button>
         </div>
@@ -93,7 +100,9 @@
         <!-- ============================================================ -->
         <section id="phase-hero-ai" class="flow-phase flow-phase--hero card" data-animate>
           <div class="hero-badge">
-            <svg class="icon icon-lg"><use href="#icon-sparkles"></use></svg>
+            <svg class="icon icon-lg">
+              <use href="#icon-sparkles"></use>
+            </svg>
             <span class="eyebrow">ScamShield MY</span>
           </div>
           <h1 data-i18n="hero.ai.title">Got scammed?<br>Tell me what happened.</h1>
@@ -106,20 +115,31 @@
             <div id="ai-chat-messages-inline" class="ai-chat-messages">
               <div class="ai-msg ai-msg--assistant">
                 <div class="ai-msg-avatar">
-                  <svg class="icon"><use href="#icon-shield"></use></svg>
+                  <svg class="icon">
+                    <use href="#icon-shield"></use>
+                  </svg>
                 </div>
                 <div class="ai-msg-bubble">
                   <p><strong data-i18n="ai.greeting.title">I'm your ScamShield AI assistant.</strong></p>
-                  <p data-i18n="ai.greeting.body">Tell me what happened — what type of scam, when it occurred, and what you've done so far. I'll guide you through the fastest containment steps.</p>
+                  <p data-i18n="ai.greeting.body">Tell me what happened — what type of scam, when it occurred, and what
+                    you've done so far. I'll guide you through the fastest containment steps.</p>
                   <p class="ai-msg-hint" data-i18n="ai.greeting.hint">You can write in English or Bahasa Melayu.</p>
                 </div>
               </div>
             </div>
             <div class="ai-quick-actions" id="ai-quick-actions">
-              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="I got scammed — what should I do right now?" data-i18n="ai.quick.scammed">I got scammed — what now?</button>
-              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="I need to check a suspicious wallet address" data-i18n="ai.quick.check_wallet">Check a wallet address</button>
-              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="Help me generate a police report for a scam" data-i18n="ai.quick.report">Generate a report</button>
-              <button class="btn btn-sm btn-ghost ai-quick-btn" data-prompt="What are the emergency contacts for reporting scams in Malaysia?" data-i18n="ai.quick.emergency">Emergency contacts</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn"
+                data-prompt="I got scammed — what should I do right now?" data-i18n="ai.quick.scammed">I got scammed —
+                what now?</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn"
+                data-prompt="I need to check a suspicious wallet address" data-i18n="ai.quick.check_wallet">Check a
+                wallet address</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn"
+                data-prompt="Help me generate a police report for a scam" data-i18n="ai.quick.report">Generate a
+                report</button>
+              <button class="btn btn-sm btn-ghost ai-quick-btn"
+                data-prompt="What are the emergency contacts for reporting scams in Malaysia?"
+                data-i18n="ai.quick.emergency">Emergency contacts</button>
             </div>
             <form id="ai-chat-form-inline" class="ai-chat-input-row">
               <textarea id="ai-chat-input-inline" class="ai-chat-input"
@@ -128,7 +148,9 @@
               <button type="submit" id="ai-chat-send-inline" class="btn btn-primary ai-chat-send">
                 <span class="btn-text" data-i18n="ai.btn.send">Send</span>
                 <span class="btn-loader hidden">
-                  <svg class="icon icon-spin"><use href="#icon-loader"></use></svg>
+                  <svg class="icon icon-spin">
+                    <use href="#icon-loader"></use>
+                  </svg>
                 </span>
               </button>
             </form>
@@ -136,7 +158,8 @@
 
           <p class="hero-reassurance">
             <span data-i18n="hero.flow.reassurance_free">Free to use.</span>
-            <a href="/api/auth/login" class="hero-signin-link" data-i18n="hero.flow.signin_cta">Sign in free for 30 reports/day</a>
+            <a href="/api/auth/login" class="hero-signin-link" data-i18n="hero.flow.signin_cta">Sign in free for 30
+              reports/day</a>
           </p>
         </section>
 
@@ -145,7 +168,9 @@
         <!-- ============================================================ -->
         <section id="phase-hero" class="flow-phase flow-phase--hero card hidden" data-animate>
           <div class="hero-badge">
-            <svg class="icon icon-lg"><use href="#icon-shield"></use></svg>
+            <svg class="icon icon-lg">
+              <use href="#icon-shield"></use>
+            </svg>
             <span class="eyebrow">ScamShield MY</span>
           </div>
           <h1 data-i18n="hero.flow.title">I think I got scammed.</h1>
@@ -156,16 +181,16 @@
 
           <form id="flow-input-form" class="flow-input-form">
             <div class="flow-input-wrap">
-              <input id="flow-input" type="text"
-                placeholder="Paste anything: 0x... address, @handle, URL, phone number"
-                data-i18n-placeholder="flow.input.placeholder"
-                required autocomplete="off">
+              <input id="flow-input" type="text" placeholder="Paste anything: 0x... address, @handle, URL, phone number"
+                data-i18n-placeholder="flow.input.placeholder" required autocomplete="off">
               <span id="flow-detect-badge" class="auto-detect-badge hidden"></span>
             </div>
             <button type="submit" id="flow-submit" class="btn btn-primary btn-lg flow-submit">
               <span class="btn-text" data-i18n="flow.btn.check">Check Now</span>
               <span class="btn-loader hidden">
-                <svg class="icon icon-spin"><use href="#icon-loader"></use></svg>
+                <svg class="icon icon-spin">
+                  <use href="#icon-loader"></use>
+                </svg>
                 <span data-i18n="flow.btn.checking">Checking...</span>
               </span>
             </button>
@@ -173,7 +198,8 @@
 
           <p class="hero-reassurance">
             <span data-i18n="hero.flow.reassurance_free">Free to use.</span>
-            <a href="/api/auth/login" class="hero-signin-link" data-i18n="hero.flow.signin_cta">Sign in free for 30 reports/day</a>
+            <a href="/api/auth/login" class="hero-signin-link" data-i18n="hero.flow.signin_cta">Sign in free for 30
+              reports/day</a>
           </p>
         </section>
 
@@ -215,7 +241,9 @@
           <!-- Loading state for parallel API calls -->
           <div id="recovery-kit-loading" class="flow-phase flow-phase--loading card">
             <div class="kit-loading-indicator">
-              <svg class="icon icon-spin icon-lg"><use href="#icon-loader"></use></svg>
+              <svg class="icon icon-spin icon-lg">
+                <use href="#icon-loader"></use>
+              </svg>
               <p data-i18n="flow.kit.generating">Generating your personalized recovery kit...</p>
             </div>
             <div class="kit-loading-steps">
@@ -269,11 +297,15 @@
             <!-- Report mode toggle: AI vs Template -->
             <div class="report-mode-toggle" id="report-mode-toggle">
               <button id="report-mode-ai" class="report-mode-btn report-mode-btn--active">
-                <svg class="icon"><use href="#icon-sparkles"></use></svg>
+                <svg class="icon">
+                  <use href="#icon-sparkles"></use>
+                </svg>
                 AI Generated
               </button>
               <button id="report-mode-template" class="report-mode-btn">
-                <svg class="icon"><use href="#icon-file-text"></use></svg>
+                <svg class="icon">
+                  <use href="#icon-file-text"></use>
+                </svg>
                 Template
               </button>
               <span id="report-mode-badge" class="report-mode-badge hidden"></span>
@@ -290,7 +322,9 @@
                 <div class="textarea-wrap">
                   <textarea id="flow-report-bank" rows="10" readonly></textarea>
                   <button class="btn-copy" data-copy="flow-report-bank" title="Copy bank report">
-                    <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                    <svg class="icon">
+                      <use href="#icon-clipboard"></use>
+                    </svg>
                     <span class="copy-label">Copy</span>
                   </button>
                 </div>
@@ -299,7 +333,9 @@
                 <div class="textarea-wrap">
                   <textarea id="flow-report-police" rows="10" readonly></textarea>
                   <button class="btn-copy" data-copy="flow-report-police" title="Copy police report">
-                    <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                    <svg class="icon">
+                      <use href="#icon-clipboard"></use>
+                    </svg>
                     <span class="copy-label">Copy</span>
                   </button>
                 </div>
@@ -308,7 +344,9 @@
                 <div class="textarea-wrap">
                   <textarea id="flow-report-platform" rows="10" readonly></textarea>
                   <button class="btn-copy" data-copy="flow-report-platform" title="Copy platform report">
-                    <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                    <svg class="icon">
+                      <use href="#icon-clipboard"></use>
+                    </svg>
                     <span class="copy-label">Copy</span>
                   </button>
                 </div>
@@ -322,11 +360,15 @@
               </label>
               <div class="flow-edit-actions">
                 <button id="flow-regenerate-reports" class="btn btn-sm">
-                  <svg class="icon"><use href="#icon-refresh"></use></svg>
+                  <svg class="icon">
+                    <use href="#icon-refresh"></use>
+                  </svg>
                   <span data-i18n="flow.reports.regenerate">Update Reports</span>
                 </button>
                 <button id="flow-export-pdf" class="btn btn-sm btn-pdf">
-                  <svg class="icon"><use href="#icon-file-text"></use></svg>
+                  <svg class="icon">
+                    <use href="#icon-file-text"></use>
+                  </svg>
                   <span data-i18n="flow.reports.export_pdf">Download PDF</span>
                 </button>
               </div>
@@ -339,7 +381,8 @@
               <span class="flow-step-badge">STEP 3</span>
               <div>
                 <h2 data-i18n="flow.checklist.title">Recovery Progress</h2>
-                <p class="section-subtitle" data-i18n="flow.checklist.subtitle">Track your containment. Each action reduces exposure.</p>
+                <p class="section-subtitle" data-i18n="flow.checklist.subtitle">Track your containment. Each action
+                  reduces exposure.</p>
               </div>
             </div>
 
@@ -362,7 +405,8 @@
               <span class="flow-step-badge">STEP 4</span>
               <div>
                 <h2 data-i18n="flow.share.title">Protect Others</h2>
-                <p class="section-subtitle" data-i18n="flow.share.subtitle">Share a warning to stop the scam from spreading.</p>
+                <p class="section-subtitle" data-i18n="flow.share.subtitle">Share a warning to stop the scam from
+                  spreading.</p>
               </div>
             </div>
 
@@ -371,9 +415,12 @@
                 <div class="warning-link-group">
                   <span class="form-label" data-i18n="warning.label.page">Warning Page</span>
                   <div class="link-copy-row">
-                    <a id="flow-warning-link" href="#" target="_blank" rel="noopener noreferrer" class="warning-url"></a>
+                    <a id="flow-warning-link" href="#" target="_blank" rel="noopener noreferrer"
+                      class="warning-url"></a>
                     <button id="flow-copy-warning" class="btn-copy btn-copy--inline" title="Copy link">
-                      <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                      <svg class="icon">
+                        <use href="#icon-clipboard"></use>
+                      </svg>
                       <span class="copy-label">Copy</span>
                     </button>
                   </div>
@@ -386,7 +433,9 @@
                     Share on Telegram
                   </button>
                   <button id="flow-share-native" class="btn btn-sm">
-                    <svg class="icon"><use href="#icon-share"></use></svg> Share
+                    <svg class="icon">
+                      <use href="#icon-share"></use>
+                    </svg> Share
                   </button>
                 </div>
               </div>
@@ -394,16 +443,21 @@
               <!-- Warning Card Customization Panel -->
               <details id="warning-customize-panel" class="customize-panel">
                 <summary class="customize-toggle">
-                  <svg class="icon"><use href="#icon-sparkles"></use></svg>
+                  <svg class="icon">
+                    <use href="#icon-sparkles"></use>
+                  </svg>
                   <span data-i18n="warning.customize.toggle">Customize Warning Card</span>
-                  <svg class="icon icon-chevron"><use href="#icon-chevron-down"></use></svg>
+                  <svg class="icon icon-chevron">
+                    <use href="#icon-chevron-down"></use>
+                  </svg>
                 </summary>
                 <div class="customize-body">
                   <div class="customize-grid">
                     <div class="customize-field">
                       <label class="form-label" data-i18n="warning.customize.theme">Color Theme</label>
                       <div class="theme-picker" id="customize-theme-picker">
-                        <button class="theme-swatch theme-swatch--active" data-theme="auto" title="Auto (based on verdict)">
+                        <button class="theme-swatch theme-swatch--active" data-theme="auto"
+                          title="Auto (based on verdict)">
                           <span class="swatch-dot swatch-dot--auto"></span> Auto
                         </button>
                         <button class="theme-swatch" data-theme="danger" title="Danger (Red)">
@@ -429,11 +483,13 @@
                     </div>
                     <div class="customize-field customize-field--wide">
                       <label class="form-label" data-i18n="warning.customize.headline">Custom Headline</label>
-                      <input id="customize-headline" type="text" class="customize-input" placeholder="Leave blank for auto-generated headline" maxlength="200">
+                      <input id="customize-headline" type="text" class="customize-input"
+                        placeholder="Leave blank for auto-generated headline" maxlength="200">
                     </div>
                     <div class="customize-field customize-field--wide">
                       <label class="form-label" data-i18n="warning.customize.footer">Footer Text</label>
-                      <input id="customize-footer" type="text" class="customize-input" placeholder="Custom footer message (optional)" maxlength="200">
+                      <input id="customize-footer" type="text" class="customize-input"
+                        placeholder="Custom footer message (optional)" maxlength="200">
                     </div>
                     <div class="customize-field">
                       <label class="customize-checkbox-label">
@@ -444,11 +500,15 @@
                   </div>
                   <div class="customize-actions">
                     <button id="customize-preview-btn" class="btn btn-sm">
-                      <svg class="icon"><use href="#icon-search"></use></svg>
+                      <svg class="icon">
+                        <use href="#icon-search"></use>
+                      </svg>
                       <span data-i18n="warning.customize.preview">Preview</span>
                     </button>
                     <button id="customize-apply-btn" class="btn btn-sm btn-primary">
-                      <svg class="icon"><use href="#icon-refresh"></use></svg>
+                      <svg class="icon">
+                        <use href="#icon-refresh"></use>
+                      </svg>
                       <span data-i18n="warning.customize.apply">Apply &amp; Regenerate</span>
                     </button>
                   </div>
@@ -502,15 +562,21 @@
             <h3 data-i18n="flow.footer.more_help">Need more help?</h3>
             <div class="flow-secondary-links">
               <button id="flow-open-ai" class="btn btn-sm">
-                <svg class="icon"><use href="#icon-sparkles"></use></svg>
+                <svg class="icon">
+                  <use href="#icon-sparkles"></use>
+                </svg>
                 <span data-i18n="flow.footer.ai">AI Assistant</span>
               </button>
               <a href="/dashboard" class="btn btn-sm">
-                <svg class="icon"><use href="#icon-bar-chart-2"></use></svg>
+                <svg class="icon">
+                  <use href="#icon-bar-chart-2"></use>
+                </svg>
                 <span data-i18n="flow.footer.dashboard">Dashboard</span>
               </a>
               <a href="/reports" class="btn btn-sm">
-                <svg class="icon"><use href="#icon-file-text"></use></svg>
+                <svg class="icon">
+                  <use href="#icon-file-text"></use>
+                </svg>
                 <span data-i18n="flow.footer.reports">Reports</span>
               </a>
             </div>
@@ -522,13 +588,19 @@
           <div class="powered-by">
             <span class="powered-by-label">Powered by</span>
             <div class="powered-by-logos">
-              <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer" class="powered-by-item">CoinGecko</a>
-              <a href="https://honeypot.is" target="_blank" rel="noopener noreferrer" class="powered-by-item">Honeypot.is</a>
-              <a href="https://gopluslabs.io" target="_blank" rel="noopener noreferrer" class="powered-by-item">GoPlus</a>
-              <a href="https://www.chainabuse.com" target="_blank" rel="noopener noreferrer" class="powered-by-item">Chainabuse</a>
-              <a href="https://cryptoscamdb.org" target="_blank" rel="noopener noreferrer" class="powered-by-item">CryptoScamDB</a>
+              <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer"
+                class="powered-by-item">CoinGecko</a>
+              <a href="https://honeypot.is" target="_blank" rel="noopener noreferrer"
+                class="powered-by-item">Honeypot.is</a>
+              <a href="https://gopluslabs.io" target="_blank" rel="noopener noreferrer"
+                class="powered-by-item">GoPlus</a>
+              <a href="https://www.chainabuse.com" target="_blank" rel="noopener noreferrer"
+                class="powered-by-item">Chainabuse</a>
+              <a href="https://cryptoscamdb.org" target="_blank" rel="noopener noreferrer"
+                class="powered-by-item">CryptoScamDB</a>
               <span class="powered-by-item">Gemini AI</span>
-              <a href="https://workers.cloudflare.com" target="_blank" rel="noopener noreferrer" class="powered-by-item">Cloudflare Workers</a>
+              <a href="https://workers.cloudflare.com" target="_blank" rel="noopener noreferrer"
+                class="powered-by-item">Cloudflare Workers</a>
             </div>
           </div>
           <p class="legal-line" data-i18n="footer.legal">ScamShield MY does not promise fund recovery. We provide fast
@@ -548,7 +620,9 @@
     <div id="ai-chat-messages" class="ai-chat-messages">
       <div class="ai-msg ai-msg--assistant">
         <div class="ai-msg-avatar">
-          <svg class="icon"><use href="#icon-shield"></use></svg>
+          <svg class="icon">
+            <use href="#icon-shield"></use>
+          </svg>
         </div>
         <div class="ai-msg-bubble">
           <p><strong data-i18n="ai.greeting.title">I'm your ScamShield AI assistant.</strong></p>
@@ -559,13 +633,14 @@
       </div>
     </div>
     <form id="ai-chat-form" class="ai-chat-input-row">
-      <textarea id="ai-chat-input" class="ai-chat-input"
-        placeholder="Describe your situation..."
+      <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Describe your situation..."
         data-i18n-placeholder="ai.input.placeholder" rows="2"></textarea>
       <button type="submit" id="ai-chat-send" class="btn btn-primary ai-chat-send">
         <span class="btn-text" data-i18n="ai.btn.send">Send</span>
         <span class="btn-loader hidden">
-          <svg class="icon icon-spin"><use href="#icon-loader"></use></svg>
+          <svg class="icon icon-spin">
+            <use href="#icon-loader"></use>
+          </svg>
         </span>
       </button>
     </form>
@@ -573,13 +648,17 @@
 
   <!-- Floating AI trigger button -->
   <button id="ai-fab" class="ai-fab hidden">
-    <svg class="icon"><use href="#icon-sparkles"></use></svg>
+    <svg class="icon">
+      <use href="#icon-sparkles"></use>
+    </svg>
     <span class="ai-fab-label">AI Help</span>
   </button>
 
   <!-- Telegram Support FAB -->
   <a href="https://t.me/ScamShieldMY" target="_blank" id="tg-fab" class="tg-fab" aria-label="Telegram Support">
-    <svg class="icon"><use href="#icon-telegram"></use></svg>
+    <svg class="icon">
+      <use href="#icon-telegram"></use>
+    </svg>
     <span class="tg-fab-label" data-i18n="nav.telegram">Telegram</span>
   </a>
 
@@ -594,7 +673,8 @@
       </symbol>
       <symbol id="icon-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+        <path
+          d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
         <path d="M20 3v4" />
         <path d="M22 5h-4" />
       </symbol>
@@ -693,7 +773,8 @@
       </symbol>
       <symbol id="icon-telegram" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21.19 5.11l-2.55 12.04c-.19.85-.7 1.06-1.41.66l-3.89-2.87-1.88 1.81c-.21.21-.38.38-.78.38l.28-3.95L18.15 6.5c.31-.27-.07-.42-.48-.15L7.29 12.96l-3.83-1.2c-.83-.26-.85-.83.17-1.23L18.49 4.31c.69-.25 1.3.17 1.05 1.25z" />
+        <path
+          d="M21.19 5.11l-2.55 12.04c-.19.85-.7 1.06-1.41.66l-3.89-2.87-1.88 1.81c-.21.21-.38.38-.78.38l.28-3.95L18.15 6.5c.31-.27-.07-.42-.48-.15L7.29 12.96l-3.83-1.2c-.83-.26-.85-.83.17-1.23L18.49 4.31c.69-.25 1.3.17 1.05 1.25z" />
       </symbol>
     </defs>
   </svg>

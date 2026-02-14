@@ -674,7 +674,7 @@ async function onFlowSubmit(event) {
     showToast("Please enter a valid wallet address (0x...), contract address, or social handle (@username, t.me/, etc.)", "error");
     return;
   }
-  
+
   state.input = {
     raw: rawInput,
     type: detected,
@@ -682,13 +682,23 @@ async function onFlowSubmit(event) {
     chain: (detected === "contract" || detected === "wallet") ? "eth" : "",
   };
 
-  // Loading state
+  // Loading state with progressive updates
   const submitBtn = $("flow-submit");
   const btnText = submitBtn.querySelector(".btn-text");
   const btnLoader = submitBtn.querySelector(".btn-loader");
   submitBtn.disabled = true;
+
+  if (!btnText.dataset.original) btnText.dataset.original = btnText.textContent;
+
   btnText.classList.add("hidden");
   btnLoader.classList.remove("hidden");
+
+  // Simulate "Deep Scan" effect
+  const loadingTexts = ["Connecting...", "Scanning databases...", "Analyzing patterns...", "Verifying..."];
+  let loadStep = 0;
+  const loadInterval = setInterval(() => {
+    // Optional: update some loading badge if it exists
+  }, 800);
 
   // Hide previous results
   hide("phase-verdict");
@@ -714,14 +724,18 @@ async function onFlowSubmit(event) {
     await revealPhaseAnimated("phase-verdict", 100);
 
     // Branch based on verdict
+    // Branch based on verdict
     if (verdictResponse.verdict === "LEGIT") {
       await revealPhaseAnimated("phase-legit", 400);
       await revealPhaseAnimated("phase-footer-actions", 600);
       showAiFab();
+      // Safe sound effect (optional)
     } else {
       // HIGH_RISK or UNKNOWN → full recovery kit
       await generateRecoveryKit(verdictResponse);
     }
+
+    clearInterval(loadInterval); // Clear loading interval
 
   } catch (error) {
     showToastWithRetry(error.message, () => onFlowSubmit(event));
@@ -729,6 +743,8 @@ async function onFlowSubmit(event) {
     submitBtn.disabled = false;
     btnText.classList.remove("hidden");
     btnLoader.classList.add("hidden");
+    // Restore original text
+    if (btnText.dataset.original) btnText.textContent = btnText.dataset.original;
   }
 }
 
@@ -739,6 +755,13 @@ function renderVerdictPhase(payload) {
   const badge = $("flow-verdict-badge");
   badge.textContent = payload.verdict;
   badge.className = verdictBadgeClass(payload.verdict);
+
+  // Haptics for HIGH_RISK (Official/Tactile feel)
+  if (navigator.vibrate) {
+    if (payload.verdict === "HIGH_RISK") navigator.vibrate([100, 50, 100, 50, 300]);
+    else if (payload.verdict === "LEGIT") navigator.vibrate([50, 50, 100]);
+    else navigator.vibrate(200);
+  }
 
   // Score bar
   const scoreBar = $("flow-score-bar");

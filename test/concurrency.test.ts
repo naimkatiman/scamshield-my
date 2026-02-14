@@ -39,6 +39,39 @@ vi.mock("../src/providers", () => ({
   })),
 }));
 
+const mockProviderResult = {
+  signals: [
+    {
+      source: "MockIdentity",
+      score: 22,
+      confidence: "medium" as const,
+      evidence: "Mock signal for concurrency test.",
+      tags: ["mock"],
+      category: "identity" as const,
+    },
+    {
+      source: "MockScanner",
+      score: 18,
+      confidence: "low" as const,
+      evidence: "Mock scanner signal for concurrency test.",
+      tags: ["mock"],
+      category: "scanner" as const,
+    },
+    {
+      source: "MockCommunity",
+      score: 15,
+      confidence: "low" as const,
+      evidence: "Mock community signal for concurrency test.",
+      tags: ["mock"],
+      category: "community" as const,
+    },
+  ],
+  errors: [],
+  timings: {
+    mock: 12,
+  },
+};
+
 function createMockKV() {
   const store = new Map<string, string>();
   const kv = {
@@ -159,5 +192,55 @@ describe("verdict concurrency", () => {
     expect(kvRaw).toBeTruthy();
     const parsed = JSON.parse(kvRaw ?? "{}") as { updatedAt?: number };
     expect(parsed.updatedAt).toBe(new Date(updatedAt).getTime());
+  });
+
+  it("holds p95 behavior under burst load with a single provider fanout", async () => {
+    vi.mocked(collectProviderSignals).mockImplementationOnce(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return mockProviderResult;
+    });
+
+    const env = makeEnv();
+    const responses = await Promise.all(
+      Array.from({ length: 250 }, () => evaluateVerdict(request, env)),
+    );
+
+    expect(collectProviderSignals).toHaveBeenCalledTimes(1);
+    expect(responses).toHaveLength(250);
+    expect(responses.every((response) => response.result.reasons.length === 3)).toBe(true);
+
+    const key = buildCacheKey(request.type, request.value, request.chain ?? "evm");
+    const kvRaw = (env.CACHE_KV as unknown as { _store: Map<string, string> })._store.get(`verdict:${key}`);
+    expect(kvRaw).toBeTruthy();
+  });
+
+  it("keeps D1->KV stale cache state coherent under high concurrency", async () => {
+    const key = buildCacheKey(request.type, request.value, request.chain ?? "evm");
+    const staleUpdatedAt = "2026-02-14T01:00:00.000Z";
+    const db = createMockDB({
+      [key]: {
+        verdict: "UNKNOWN",
+        score: 52,
+        reasons_json: JSON.stringify(["r1", "r2", "r3"]),
+        sources_json: JSON.stringify(["mock"]),
+        updated_at: staleUpdatedAt,
+      },
+    });
+    const cacheKv = createMockKV();
+    const env = makeEnv({ DB: db, CACHE_KV: cacheKv });
+
+    const responses = await Promise.all(
+      Array.from({ length: 120 }, () => evaluateVerdict(request, env)),
+    );
+
+    expect(collectProviderSignals).not.toHaveBeenCalled();
+    expect((db as unknown as { prepare: ReturnType<typeof vi.fn> }).prepare).toHaveBeenCalledTimes(1);
+    expect(responses.every((response) => response.cached)).toBe(true);
+    expect(responses.every((response) => response.pendingEnrichment)).toBe(true);
+
+    const kvRaw = cacheKv._store.get(`verdict:${key}`);
+    expect(kvRaw).toBeTruthy();
+    const parsed = JSON.parse(kvRaw ?? "{}") as { updatedAt?: number };
+    expect(parsed.updatedAt).toBe(new Date(staleUpdatedAt).getTime());
   });
 });

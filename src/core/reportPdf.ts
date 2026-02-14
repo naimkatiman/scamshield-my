@@ -279,12 +279,12 @@ export function buildReportPdfHtml(payload: ReportPdfPayload): string {
 }
 
 function browserRenderingBaseUrl(env: Env): string | null {
+  if (env.BROWSER_RENDERING_API_BASE) {
+    return env.BROWSER_RENDERING_API_BASE.replace(/\/$/, "");
+  }
   const accountId = env.BROWSER_RENDERING_ACCOUNT_ID;
   if (!accountId) {
     return null;
-  }
-  if (env.BROWSER_RENDERING_API_BASE) {
-    return env.BROWSER_RENDERING_API_BASE.replace(/\/$/, "");
   }
   return `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering`;
 }

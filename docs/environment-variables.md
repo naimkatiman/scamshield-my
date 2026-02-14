@@ -9,7 +9,8 @@ Do not store real secrets in `wrangler.toml` or source files. Put secrets in Clo
 - `APP_NAME`: Display name for API responses.
 - `REGION`: Region label shown in health/dashboard responses.
 - `PROVIDER_MODE`: `mock` or `live`.
-- `WARNING_CARD_RENDER_MODE`: `svg` (default) or `png`.
+- `WARNING_CARD_RENDER_MODE`: `auto` (default), `svg`, or `png`.
+  - `auto`: use Browser Rendering PNG only when credentials are configured; otherwise store SVG without failing the request.
 - `ADMIN_EMAILS`: Comma-separated admin allowlist (case-insensitive), for example `admin1@example.com,admin2@example.com`.
 
 ### Auth

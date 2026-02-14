@@ -24,6 +24,17 @@ Date: February 14, 2026
   - `blobs`: `[action, status]`
   - `doubles`: `[1, duration_ms]`
 
+Tracked cure actions:
+
+- `playbook_accessed`
+- `report_submitted`
+- `report_generated`
+- `ai_report_generated`
+- `progress_tracked`
+- `warning_card_created`
+- `warning_card_customized`
+- `report_pdf_exported`
+
 ## Dashboard Queries (Analytics Engine SQL API)
 
 ```sql
@@ -65,6 +76,8 @@ ORDER BY events DESC;
   - Alert when `status = failed` exceeds `2%` for any cure action in 10 minutes.
 - Validation anomaly:
   - Alert when `validation_error` doubles vs prior 1-hour baseline.
+- Warning card render misconfiguration:
+  - Alert on any `warning_card_png_unconfigured` log event in production.
 
 ## Logpush Blueprint
 
