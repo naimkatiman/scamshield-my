@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScamShield MY - Scam Response Kit</title>
+  <meta name="description" content="Got scammed? ScamShield MY helps you stop the bleeding, preserve evidence, generate reports, and contain the spread. Malaysia-focused scam response toolkit.">
+  <meta property="og:title" content="ScamShield MY - Scam Response Kit">
+  <meta property="og:description" content="Most apps detect scams. We handle what happens after.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="bg-shape bg-shape-a"></div>
+  <div class="bg-shape bg-shape-b"></div>
+  <div class="bg-shape bg-shape-c"></div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <main class="container">
+    <!-- Hero -->
+    <header class="hero card">
+      <div class="hero-badge">
+        <span class="shield-icon">&#x1F6E1;</span>
+        <span class="eyebrow">ScamShield MY</span>
+      </div>
+      <h1>Got scammed?<br>Start treatment in <span class="text-accent">15 minutes.</span></h1>
+      <p id="killer-line" class="killer-line"></p>
+      <nav class="hero-nav">
+        <a href="#verdict-section" class="nav-pill" data-scroll>Check Suspect</a>
+        <a href="#emergency-playbook" class="nav-pill nav-pill--urgent" data-scroll>Emergency Playbook</a>
+        <a href="#report-generator" class="nav-pill" data-scroll>Generate Reports</a>
+        <a href="#recovery-checklist" class="nav-pill" data-scroll>Recovery Checklist</a>
+      </nav>
+    </header>
+
+    <!-- 1. Verdict -->
+    <section class="card" id="verdict-section">
+      <div class="section-header">
+        <span class="section-number">01</span>
+        <div>
+          <h2>One-Screen Verdict</h2>
+          <p class="section-subtitle">Paste a wallet, contract, or handle. Get an instant risk assessment.</p>
+        </div>
+      </div>
+
+      <form id="verdict-form" class="verdict-form">
+        <div class="form-row">
+          <label class="form-field">
+            <span class="form-label">Input Type</span>
+            <select id="verdict-type" name="type">
+              <option value="contract">Token Contract (EVM)</option>
+              <option value="wallet">Wallet Address (EVM)</option>
+              <option value="handle">Handle (Telegram / WhatsApp / IG)</option>
+            </select>
+          </label>
+          <label class="form-field form-field--grow">
+            <span class="form-label">Value</span>
+            <input id="verdict-value" name="value" placeholder="0x... or @handle" required>
+          </label>
+          <label class="form-field form-field--small">
+            <span class="form-label">Chain</span>
+            <input id="verdict-chain" name="chain" placeholder="eth">
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" id="verdict-submit">
+          <span class="btn-text">Analyze Now</span>
+          <span class="btn-loader hidden">Analyzing...</span>
+        </button>
+      </form>
+
+      <article id="verdict-result" class="verdict-result hidden">
+        <div class="verdict-top">
+          <div class="verdict-badge-wrap">
+            <span id="verdict-badge" class="verdict-badge">UNKNOWN</span>
+            <div class="verdict-score-wrap">
+              <span class="score-label">Risk Score</span>
+              <div class="score-bar-track">
+                <div id="verdict-score-bar" class="score-bar" style="width:0%"></div>
+              </div>
+              <span id="verdict-score" class="score-value">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="verdict-reasons" class="verdict-reasons"></div>
+
+        <div class="verdict-cta-block">
+          <p class="cta-label">Next steps:</p>
+          <div id="verdict-next-actions" class="cta-row"></div>
+        </div>
+
+        <p id="verdict-meta" class="meta"></p>
+      </article>
+    </section>
+
+    <!-- 2. Emergency Playbook -->
+    <section class="card card--urgent" id="emergency-playbook">
+      <div class="section-header">
+        <span class="section-number section-number--urgent">02</span>
+        <div>
+          <h2>Emergency Playbook <span class="badge-inline badge-my">Malaysia</span></h2>
+          <p class="section-subtitle">Do these now. Every minute counts.</p>
+        </div>
+      </div>
+
+      <div class="playbook-grid">
+        <div class="playbook-column">
+          <div class="playbook-heading">
+            <span class="playbook-icon playbook-icon--stop">&#9632;</span>
+            <h3>Stop the Bleeding</h3>
+          </div>
+          <ol id="playbook-stop" class="playbook-list"></ol>
+        </div>
+        <div class="playbook-column">
+          <div class="playbook-heading">
+            <span class="playbook-icon playbook-icon--evidence">&#128269;</span>
+            <h3>Collect Evidence</h3>
+          </div>
+          <ol id="playbook-evidence" class="playbook-list"></ol>
+        </div>
+      </div>
+
+      <div class="playbook-report-section">
+        <div class="playbook-heading">
+          <span class="playbook-icon playbook-icon--report">&#128220;</span>
+          <h3>Where to Report</h3>
+        </div>
+        <div id="playbook-report" class="report-channels"></div>
+      </div>
+
+      <div class="playbook-script-section">
+        <label class="form-label">Pre-written report starter (copy and paste)</label>
+        <div class="textarea-wrap">
+          <textarea id="playbook-script" rows="4" readonly></textarea>
+          <button id="copy-playbook-script" class="btn-copy" title="Copy to clipboard">
+            <span class="copy-icon">&#128203;</span>
+            <span class="copy-label">Copy</span>
+          </button>
+        </div>
+      </div>
+
+      <p id="legal-line" class="legal-line"></p>
+    </section>
+
+    <!-- 3. Report Generator -->
+    <section class="card" id="report-generator">
+      <div class="section-header">
+        <span class="section-number">03</span>
+        <div>
+          <h2>Auto-Generate Reports</h2>
+          <p class="section-subtitle">Fill in once, get copy-ready reports for bank, police, and platform.</p>
+        </div>
+      </div>
+
+      <form id="report-generate-form" class="report-form">
+        <div class="form-row">
+          <label class="form-field form-field--grow">
+            <span class="form-label">Incident Title</span>
+            <input name="incidentTitle" placeholder="e.g. Fake investment coach on Telegram" required>
+          </label>
+          <label class="form-field">
+            <span class="form-label">Scam Type</span>
+            <input name="scamType" placeholder="Investment / Impersonation" required>
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="form-field">
+            <span class="form-label">Occurred At</span>
+            <input name="occurredAt" placeholder="2026-02-14 09:25 MYT" required>
+          </label>
+          <label class="form-field">
+            <span class="form-label">Channel</span>
+            <input name="channel" placeholder="Telegram / WhatsApp / Instagram" required>
+          </label>
+          <label class="form-field">
+            <span class="form-label">Estimated Loss</span>
+            <input name="losses" placeholder="MYR 3,500">
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="form-field form-field--grow">
+            <span class="form-label">Suspect Identifiers <span class="hint">(comma separated)</span></span>
+            <input name="suspects" placeholder="@fakeadmin, 0xabc...">
+          </label>
+          <label class="form-field form-field--grow">
+            <span class="form-label">Actions Taken <span class="hint">(comma separated)</span></span>
+            <input name="actionsTaken" placeholder="Called bank, froze card">
+          </label>
+        </div>
+        <label class="form-field form-field--full">
+          <span class="form-label">Extra Notes <span class="hint">(optional)</span></span>
+          <input name="extraNotes" placeholder="Any additional context about the incident">
+        </label>
+        <button type="submit" class="btn btn-primary btn-lg">Generate Templates</button>
+      </form>
+
+      <div id="report-output" class="report-output hidden">
+        <div id="report-severity-badge" class="report-severity"></div>
+
+        <div class="report-tabs">
+          <button class="tab-btn active" data-tab="bank">For Bank</button>
+          <button class="tab-btn" data-tab="police">For Police</button>
+          <button class="tab-btn" data-tab="platform">For Platform</button>
+        </div>
+
+        <div class="report-tab-content">
+          <div class="tab-panel active" data-panel="bank">
+            <div class="textarea-wrap">
+              <textarea id="report-bank" rows="12" readonly></textarea>
+              <button class="btn-copy" data-copy="report-bank" title="Copy bank report">
+                <span class="copy-icon">&#128203;</span>
+                <span class="copy-label">Copy</span>
+              </button>
+            </div>
+          </div>
+          <div class="tab-panel" data-panel="police">
+            <div class="textarea-wrap">
+              <textarea id="report-police" rows="12" readonly></textarea>
+              <button class="btn-copy" data-copy="report-police" title="Copy police report">
+                <span class="copy-icon">&#128203;</span>
+                <span class="copy-label">Copy</span>
+              </button>
+            </div>
+          </div>
+          <div class="tab-panel" data-panel="platform">
+            <div class="textarea-wrap">
+              <textarea id="report-platform" rows="12" readonly></textarea>
+              <button class="btn-copy" data-copy="report-platform" title="Copy platform report">
+                <span class="copy-icon">&#128203;</span>
+                <span class="copy-label">Copy</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p id="report-meta" class="meta"></p>
+      </div>
+    </section>
+
+    <!-- 4. Recovery Checklist -->
+    <section class="card" id="recovery-checklist">
+      <div class="section-header">
+        <span class="section-number">04</span>
+        <div>
+          <h2>Damage Control Checklist</h2>
+          <p class="section-subtitle">Track your containment progress. Each action reduces your exposure.</p>
+        </div>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-header">
+          <span id="recovery-progress-label" class="progress-label">0% contained</span>
+          <span id="recovery-progress-count" class="progress-count">0 / 0 actions</span>
+        </div>
+        <div class="progress-track">
+          <div id="recovery-progress-bar" class="progress-bar"></div>
+        </div>
+      </div>
+
+      <ul id="recovery-task-list" class="task-list"></ul>
+    </section>
+
+    <!-- 5. Warning Card -->
+    <section class="card" id="warning-card">
+      <div class="section-header">
+        <span class="section-number">05</span>
+        <div>
+          <h2>Containment: Warning Card</h2>
+          <p class="section-subtitle">Generate a shareable warning to protect others in your network.</p>
+        </div>
+      </div>
+
+      <form id="warning-form" class="warning-form">
+        <div class="form-row">
+          <label class="form-field">
+            <span class="form-label">Verdict</span>
+            <select name="verdict">
+              <option value="HIGH_RISK">HIGH RISK</option>
+              <option value="UNKNOWN">UNKNOWN</option>
+              <option value="LEGIT">LEGIT</option>
+            </select>
+          </label>
+          <label class="form-field form-field--grow">
+            <span class="form-label">Headline</span>
+            <input name="headline" placeholder="Potential scam campaign detected" required>
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="form-field form-field--grow">
+            <span class="form-label">Primary Identifier</span>
+            <input name="identifier" placeholder="0x... or @handle" required>
+          </label>
+          <label class="form-field form-field--grow">
+            <span class="form-label">Evidence bullets <span class="hint">(separate with |)</span></span>
+            <input name="reasons" placeholder="Canonical mismatch | Honeypot risk | 4 community reports">
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">Generate Warning Card</button>
+      </form>
+
+      <div id="warning-output" class="warning-output hidden">
+        <div class="warning-links">
+          <div class="warning-link-group">
+            <span class="form-label">Warning Page</span>
+            <div class="link-copy-row">
+              <a id="warning-page-link" href="#" target="_blank" class="warning-url"></a>
+              <button id="copy-warning-url" class="btn-copy btn-copy--inline" title="Copy link">
+                <span class="copy-icon">&#128203;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <img id="warning-preview" alt="Warning card preview" class="warning-preview">
+      </div>
+    </section>
+
+    <!-- 6. Heatmap -->
+    <section class="card" id="heatmap">
+      <div class="section-header">
+        <span class="section-number">06</span>
+        <div>
+          <h2>Scam Heatmap</h2>
+          <p class="section-subtitle">Live view: which platforms and scam types are trending in Malaysia.</p>
+        </div>
+      </div>
+
+      <div class="heatmap-wrap">
+        <table class="heatmap-table">
+          <thead>
+            <tr>
+              <th>Platform</th>
+              <th>Category</th>
+              <th class="th-count">Reports (7d)</th>
+              <th class="th-trend">Trend</th>
+            </tr>
+          </thead>
+          <tbody id="heatmap-body"></tbody>
+        </table>
+      </div>
+      <button id="refresh-heatmap" class="btn btn-sm">Refresh Heatmap</button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p class="legal-line">ScamShield MY does not promise fund recovery. We provide fast containment and reporting pathways.</p>
+      <p class="footer-sub">Built for Malaysian scam victims. Open-source community tool.</p>
+    </footer>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

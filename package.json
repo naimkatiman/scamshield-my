@@ -1,0 +1,24 @@
+{
+  "name": "scamshield-my",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev src/index.ts --local",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "d1:migrate:local": "wrangler d1 migrations apply scamshield_d1 --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply scamshield_d1"
+  },
+  "dependencies": {
+    "hono": "^4.7.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260129.0",
+    "typescript": "^5.8.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^4.2.0"
+  }
+}
