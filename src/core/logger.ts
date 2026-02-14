@@ -1,5 +1,14 @@
 const EVM_PATTERN = /0x[a-fA-F0-9]{40}/g;
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const MALAYSIAN_PHONE_PATTERN = /\b(?:\+?60|0)1\d{8,9}\b/g;
+const LONG_DIGIT_PATTERN = /\b\d{10,16}\b/g;
+
+function maskDigits(value: string): string {
+  if (value.length <= 6) {
+    return "***";
+  }
+  return `${value.slice(0, 3)}***${value.slice(-2)}`;
+}
 
 function maskValue(value: string): string {
   return value
@@ -7,7 +16,9 @@ function maskValue(value: string): string {
     .replace(EMAIL_PATTERN, (match) => {
       const [local, domain] = match.split("@");
       return `${local.slice(0, 2)}***@${domain}`;
-    });
+    })
+    .replace(MALAYSIAN_PHONE_PATTERN, (match) => maskDigits(match))
+    .replace(LONG_DIGIT_PATTERN, (match) => maskDigits(match));
 }
 
 function sanitize(data: Record<string, unknown>, depth = 0): Record<string, unknown> {

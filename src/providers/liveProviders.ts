@@ -56,6 +56,7 @@ function chainToHoneypotParam(chain?: string): string {
 function createCoinGeckoProvider(env: Env): Provider {
   return {
     name: "identity_provider",
+    external: true,
     async getSignals(ctx: RiskContext): Promise<ProviderSignal[]> {
       const { type, value, chain } = ctx.request;
 
@@ -136,6 +137,7 @@ function createCoinGeckoProvider(env: Env): Provider {
 function createRiskProvider(env: Env): Provider {
   return {
     name: "risk_provider",
+    external: true,
     async getSignals(ctx: RiskContext): Promise<ProviderSignal[]> {
       const { type, value, chain } = ctx.request;
       const signals: ProviderSignal[] = [];
@@ -289,6 +291,7 @@ function createRiskProvider(env: Env): Provider {
 function createReputationProvider(env: Env): Provider {
   return {
     name: "reputation_provider",
+    external: true,
     async getSignals(ctx: RiskContext): Promise<ProviderSignal[]> {
       const { value } = ctx.request;
       const signals: ProviderSignal[] = [];

@@ -14,12 +14,25 @@ import {
 import { checkRateLimit } from "./core/rateLimit";
 import { logger } from "./core/logger";
 import { KILLER_PITCH_LINE, calculateRecoveryProgress, emergencyPlaybook, recoveryTasks } from "./core/playbook";
+import { recordCureAction } from "./core/observability";
 import { generateIncidentReports } from "./core/reportGenerator";
 import * as verdictService from "./core/verdictService";
 import { renderDashboardPage, renderReportsPage } from "./server/pages";
 import { generateSlug, storeWarningCard } from "./core/warningCard";
 import { fingerprintFromIdentifiers, validateChain, validateInput, validateSlug } from "./core/validation";
-import type { Env, QueueMessage, ReportRequest, WarningCardPayload } from "./types";
+import {
+  buildSessionCookie,
+  createJWT,
+  DAILY_LIMIT_FREE,
+  DAILY_LIMIT_LOGIN,
+  exchangeGoogleCode,
+  findOrCreateUser,
+  getGoogleAuthURL,
+  getSessionFromRequest,
+  getUsageToday,
+  recordUsage,
+} from "./core/auth";
+import type { Env, QueueMessage, ReportRequest, Session, WarningCardPayload } from "./types";
 
 const MAX_BODY_BYTES = 65_536; // 64 KB
 
@@ -77,6 +90,32 @@ function jsonError(message: string, status = 400) {
       "Content-Type": "application/json",
     },
   });
+}
+
+async function enqueueWithDedupe(
+  env: Env,
+  dedupeKey: string,
+  message: QueueMessage,
+  ttlSeconds: number,
+): Promise<boolean> {
+  try {
+    const existing = await env.CACHE_KV.get(dedupeKey);
+    if (existing) {
+      return false;
+    }
+  } catch {
+    // Fall through to best-effort queue send when KV is unavailable
+  }
+
+  await env.ENRICHMENT_QUEUE.send(message);
+
+  try {
+    await env.CACHE_KV.put(dedupeKey, "1", { expirationTtl: ttlSeconds });
+  } catch {
+    // Dedupe caching is best-effort
+  }
+
+  return true;
 }
 
 function sortObjectEntries(input: Record<string, string>): Record<string, string> {
@@ -393,6 +432,79 @@ app.get("/api/health", (c) => {
   });
 });
 
+/* ─── Auth Routes (Google OAuth) ─── */
+
+app.get("/api/auth/login", (c) => {
+  const url = getGoogleAuthURL(c.env);
+  return c.redirect(url);
+});
+
+app.get("/api/auth/callback", async (c) => {
+  const code = c.req.query("code");
+  if (!code) return jsonError("Missing authorization code.", 400);
+
+  const googleUser = await exchangeGoogleCode(code, c.env);
+  if (!googleUser) return jsonError("Google authentication failed.", 401);
+
+  const user = await findOrCreateUser(c.env.DB, googleUser.email);
+  const session: Session = {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    exp: Math.floor(Date.now() / 1000) + 86400, // 24h
+  };
+
+  const token = await createJWT(session, c.env.JWT_SECRET);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: "/app",
+      "Set-Cookie": buildSessionCookie(token),
+    },
+  });
+});
+
+app.get("/api/auth/me", async (c) => {
+  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
+  if (!session) return c.json({ authenticated: false });
+
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const usedToday = await getUsageToday(c.env.DB, session.userId, ip);
+  const limit = DAILY_LIMIT_LOGIN;
+
+  return c.json({
+    authenticated: true,
+    email: session.email,
+    role: session.role,
+    usage: { used: usedToday, limit, remaining: Math.max(0, limit - usedToday) },
+  });
+});
+
+app.get("/api/auth/logout", (c) => {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: "/app",
+      "Set-Cookie": "scamshield_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+    },
+  });
+});
+
+app.get("/api/quota", async (c) => {
+  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const userId = session?.userId ?? null;
+  const limit = session ? DAILY_LIMIT_LOGIN : DAILY_LIMIT_FREE;
+  const usedToday = await getUsageToday(c.env.DB, userId, ip);
+
+  return c.json({
+    authenticated: !!session,
+    limit,
+    used: usedToday,
+    remaining: Math.max(0, limit - usedToday),
+  });
+});
+
 app.get("/app", async (c) => {
   return c.env.ASSETS.fetch(new Request(new URL("/index.html", c.req.url)));
 });
@@ -408,14 +520,35 @@ app.get("/reports", async (c) => {
 });
 
 app.get("/api/playbook", (c) => {
-  return c.json({
+  const startedAt = Date.now();
+  const response = {
     killerPitch: KILLER_PITCH_LINE,
     playbook: emergencyPlaybook,
     recoveryTasks,
+  };
+
+  recordCureAction(c.env, "playbook_accessed", "success", Date.now() - startedAt, {
+    path: "/api/playbook",
+    tasks: recoveryTasks.length,
   });
+
+  return c.json(response);
 });
 
 app.post("/api/verdict", async (c) => {
+  // ── Daily quota enforcement ──
+  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const userId = session?.userId ?? null;
+  const dailyLimit = session ? DAILY_LIMIT_LOGIN : DAILY_LIMIT_FREE;
+  const usedToday = await getUsageToday(c.env.DB, userId, ip);
+  if (usedToday >= dailyLimit) {
+    const msg = session
+      ? `Daily limit of ${dailyLimit} searches reached. Resets at midnight UTC.`
+      : `Free tier limit of ${dailyLimit} searches reached. Sign in to get ${DAILY_LIMIT_LOGIN} daily searches.`;
+    return jsonError(msg, 429);
+  }
+
   const parsed = verdictRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return jsonError("Invalid verdict payload.");
@@ -445,7 +578,7 @@ app.post("/api/verdict", async (c) => {
           chain: parsed.data.chain,
         },
       };
-      await c.env.ENRICHMENT_QUEUE.send(message);
+      await enqueueWithDedupe(c.env, `queue:enrich:${evaluated.key}`, message, 45);
     } catch {
       logger.warn("queue_send_failed", { endpoint: "verdict" });
     }
@@ -459,6 +592,9 @@ app.post("/api/verdict", async (c) => {
     cached: evaluated.cached,
     providerErrors: evaluated.providerErrors.length,
   });
+
+  // Record usage AFTER successful verdict
+  await recordUsage(c.env.DB, userId, ip, "verdict").catch(() => { });
 
   return c.json({
     key: evaluated.key,
@@ -487,6 +623,7 @@ app.post("/api/report", async (c) => {
   };
 
   try {
+    const startedAt = Date.now();
     const reportId = await createCommunityReport(c.env.DB, report);
     const fingerprint = fingerprintFromIdentifiers(normalizedIdentifiers);
     await upsertPattern(c.env.DB, fingerprint, report.platform, report.category, JSON.stringify(normalizedIdentifiers));
@@ -497,6 +634,11 @@ app.post("/api/report", async (c) => {
     });
 
     logger.info("report_created", { reportId, platform: report.platform, category: report.category });
+    recordCureAction(c.env, "report_submitted", "success", Date.now() - startedAt, {
+      severity: report.severity,
+      platform: report.platform,
+      category: report.category,
+    });
 
     return c.json({
       id: reportId,
@@ -506,28 +648,49 @@ app.post("/api/report", async (c) => {
     });
   } catch (error) {
     logger.error("report_db_error", { message: error instanceof Error ? error.message : "unknown" });
+    recordCureAction(c.env, "report_submitted", "failed", 0, {
+      endpoint: "/api/report",
+    });
     return jsonError("Report submission failed. Please try again.", 503);
   }
 });
 
 app.post("/api/report/generate", async (c) => {
+  const startedAt = Date.now();
   const parsed = reportGenerateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
+    recordCureAction(c.env, "report_generated", "validation_error", Date.now() - startedAt, {
+      endpoint: "/api/report/generate",
+    });
     return jsonError("Invalid report generation payload.");
   }
 
   const generated = generateIncidentReports(parsed.data);
+  recordCureAction(c.env, "report_generated", "success", Date.now() - startedAt, {
+    endpoint: "/api/report/generate",
+    suspectsCount: parsed.data.suspects.length,
+    actionsCount: parsed.data.actionsTaken.length,
+  });
   return c.json(generated);
 });
 
 app.post("/api/recovery-progress", async (c) => {
+  const startedAt = Date.now();
   const parsed = recoveryProgressSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
+    recordCureAction(c.env, "progress_tracked", "validation_error", Date.now() - startedAt, {
+      endpoint: "/api/recovery-progress",
+    });
     return jsonError("Invalid recovery payload.");
   }
 
   const progress = calculateRecoveryProgress(parsed.data.completedTaskIds);
   const completed = new Set(parsed.data.completedTaskIds);
+
+  recordCureAction(c.env, "progress_tracked", "success", Date.now() - startedAt, {
+    completedTasks: parsed.data.completedTaskIds.length,
+    progress,
+  });
 
   return c.json({
     progress,
@@ -539,8 +702,12 @@ app.post("/api/recovery-progress", async (c) => {
 });
 
 app.post("/api/warning-card", async (c) => {
+  const startedAt = Date.now();
   const parsed = warningCardSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
+    recordCureAction(c.env, "warning_card_created", "validation_error", Date.now() - startedAt, {
+      endpoint: "/api/warning-card",
+    });
     return jsonError("Invalid warning card payload.");
   }
 
@@ -569,12 +736,16 @@ app.post("/api/warning-card", async (c) => {
         type: "render_card",
         payload: { slug, card: payload },
       };
-      await c.env.ENRICHMENT_QUEUE.send(queuedMessage);
+      await enqueueWithDedupe(c.env, `queue:render:${slug}`, queuedMessage, 180);
     } catch {
       logger.warn("queue_send_failed", { endpoint: "warning-card" });
     }
 
     logger.info("warning_card_created", { slug, verdict: payload.verdict });
+    recordCureAction(c.env, "warning_card_created", "success", Date.now() - startedAt, {
+      verdict: payload.verdict,
+      reasonsCount: payload.reasons.length,
+    });
 
     return c.json({
       slug,
@@ -583,6 +754,9 @@ app.post("/api/warning-card", async (c) => {
     });
   } catch (error) {
     logger.error("warning_card_error", { message: error instanceof Error ? error.message : "unknown" });
+    recordCureAction(c.env, "warning_card_created", "failed", Date.now() - startedAt, {
+      endpoint: "/api/warning-card",
+    });
     return jsonError("Warning card creation failed. Please try again.", 503);
   }
 });
@@ -689,6 +863,20 @@ app.post("/api/ai/chat", async (c) => {
     return jsonError("AI chat is not configured.", 503);
   }
 
+  // ── Daily quota enforcement for AI chat ──
+  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const userId = session?.userId ?? null;
+  const dailyLimit = session ? DAILY_LIMIT_LOGIN : DAILY_LIMIT_FREE;
+  const chatUsed = await getUsageToday(c.env.DB, userId, ip);
+  if (chatUsed >= dailyLimit) {
+    const msg = session
+      ? `Daily limit of ${dailyLimit} requests reached. Resets at midnight UTC.`
+      : `Free tier limit of ${dailyLimit} requests reached. Sign in for ${DAILY_LIMIT_LOGIN} daily.`;
+    return jsonError(msg, 429);
+  }
+  await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
+
   const parsed = aiChatSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return jsonError("Invalid chat payload.");
@@ -730,6 +918,57 @@ app.post("/api/ai/chat", async (c) => {
       "Connection": "keep-alive",
       "Access-Control-Allow-Origin": "*",
     },
+  });
+});
+
+/* ─── Dashboard APIs ─── */
+
+app.get("/api/dashboard/client", async (c) => {
+  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
+  if (!session) return jsonError("Authentication required.", 401);
+
+  const day = new Date().toISOString().slice(0, 10);
+  const usedToday = await getUsageToday(c.env.DB, session.userId, "");
+  const limit = DAILY_LIMIT_LOGIN;
+
+  // Fetch recent usage history (last 30 entries)
+  const history = await c.env.DB.prepare(
+    "SELECT action, day, timestamp FROM usage_logs WHERE user_id = ? ORDER BY timestamp DESC LIMIT 30"
+  ).bind(session.userId).all();
+
+  return c.json({
+    email: session.email,
+    role: session.role,
+    quota: { used: usedToday, limit, remaining: Math.max(0, limit - usedToday), day },
+    history: history.results ?? [],
+  });
+});
+
+app.get("/api/dashboard/admin", async (c) => {
+  const session = await getSessionFromRequest(c.req.raw, c.env.JWT_SECRET);
+  if (!session || session.role !== "admin") return jsonError("Admin access required.", 403);
+
+  const day = new Date().toISOString().slice(0, 10);
+
+  const [totalUsers, todayUsage, topUsers, stats, heatmap] = await Promise.all([
+    c.env.DB.prepare("SELECT COUNT(*) as cnt FROM users").first<{ cnt: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) as cnt FROM usage_logs WHERE day = ?").bind(day).first<{ cnt: number }>(),
+    c.env.DB.prepare(
+      `SELECT u.email, COUNT(l.id) as usage_count
+       FROM usage_logs l JOIN users u ON l.user_id = u.id
+       WHERE l.day = ? GROUP BY l.user_id ORDER BY usage_count DESC LIMIT 10`
+    ).bind(day).all(),
+    getDashboardStats(c.env.DB),
+    getHeatmapGrid(c.env.DB),
+  ]);
+
+  return c.json({
+    day,
+    totalUsers: totalUsers?.cnt ?? 0,
+    todayUsage: todayUsage?.cnt ?? 0,
+    topUsers: topUsers.results ?? [],
+    scamStats: stats,
+    heatmap,
   });
 });
 

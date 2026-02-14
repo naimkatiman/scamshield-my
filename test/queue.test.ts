@@ -64,6 +64,10 @@ function makeEnv(): Env {
         APP_NAME: "ScamShield MY",
         REGION: "MY",
         PROVIDER_MODE: "mock",
+        JWT_SECRET: "test-jwt-secret",
+        GOOGLE_CLIENT_ID: "test-client-id",
+        GOOGLE_CLIENT_SECRET: "test-client-secret",
+        GOOGLE_REDIRECT_URI: "https://example.test/callback",
     };
 }
 
@@ -96,7 +100,7 @@ describe("queue consumer", () => {
         // Default success behavior
         vi.mocked(verdictService.evaluateVerdict).mockResolvedValue({
             key: "test",
-            result: { verdict: "LEGIT", score: 0, reasons: [], sources: [], nextActions: [] },
+            result: { verdict: "LEGIT", score: 0, reasons: ["r1", "r2", "r3"], sources: [], nextActions: [] },
             pendingEnrichment: false,
             providerErrors: [],
             timings: {},

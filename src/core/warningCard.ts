@@ -1,5 +1,12 @@
 import type { Env, WarningCardPayload } from "../types";
+import { logger } from "./logger";
 import { maskIdentifier } from "./validation";
+
+const CARD_WIDTH = 1200;
+const CARD_HEIGHT = 630;
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+const PDF_SIGNATURE = [37, 80, 68, 70]; // %PDF
+const BROWSER_RENDER_TIMEOUT_MS = 9000;
 
 export function generateSlug(seed: string): string {
   const cleaned = seed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
@@ -202,30 +209,287 @@ export function renderWarningCardSvg(payload: WarningCardPayload): string {
 </svg>`;
 }
 
+function toBase64Utf8(value: string): string {
+  const bufferApi = (globalThis as unknown as {
+    Buffer?: {
+      from(input: string, encoding: string): { toString(encoding: string): string };
+    };
+  }).Buffer;
+
+  if (bufferApi) {
+    return bufferApi.from(value, "utf-8").toString("base64");
+  }
+
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function fromBase64(base64: string): Uint8Array {
+  const sanitized = base64.replace(/^data:[^;]+;base64,/, "");
+  const bufferApi = (globalThis as unknown as {
+    Buffer?: {
+      from(input: string, encoding: string): Uint8Array;
+    };
+  }).Buffer;
+
+  if (bufferApi) {
+    return Uint8Array.from(bufferApi.from(sanitized, "base64"));
+  }
+
+  const binary = atob(sanitized);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function hasPrefix(data: Uint8Array, prefix: number[]): boolean {
+  if (data.length < prefix.length) {
+    return false;
+  }
+  for (let i = 0; i < prefix.length; i += 1) {
+    if (data[i] !== prefix[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function extractBinaryFromJson(json: unknown): Uint8Array | null {
+  if (typeof json !== "object" || json === null) {
+    return null;
+  }
+  const record = json as Record<string, unknown>;
+
+  const candidates = [
+    typeof record.result === "string" ? record.result : null,
+    typeof (record.result as Record<string, unknown> | undefined)?.data === "string"
+      ? (record.result as Record<string, string>).data
+      : null,
+    typeof (record.result as Record<string, unknown> | undefined)?.screenshot === "string"
+      ? (record.result as Record<string, string>).screenshot
+      : null,
+    typeof (record.result as Record<string, unknown> | undefined)?.pdf === "string"
+      ? (record.result as Record<string, string>).pdf
+      : null,
+  ].filter((entry): entry is string => Boolean(entry));
+
+  if (candidates.length === 0) {
+    return null;
+  }
+  return fromBase64(candidates[0]);
+}
+
+function createRasterHtml(svg: string): string {
+  const encodedSvg = toBase64Utf8(svg);
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: ${CARD_WIDTH}px;
+      height: ${CARD_HEIGHT}px;
+      background: #0b1120;
+      overflow: hidden;
+    }
+    img {
+      display: block;
+      width: ${CARD_WIDTH}px;
+      height: ${CARD_HEIGHT}px;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <img src="data:image/svg+xml;base64,${encodedSvg}" alt="Warning card">
+</body>
+</html>`;
+}
+
+function browserRenderingBaseUrl(env: Env): string | null {
+  const accountId = env.BROWSER_RENDERING_ACCOUNT_ID;
+  if (!accountId) {
+    return null;
+  }
+  if (env.BROWSER_RENDERING_API_BASE) {
+    return env.BROWSER_RENDERING_API_BASE.replace(/\/$/, "");
+  }
+  return `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering`;
+}
+
+async function callBrowserRendering(
+  env: Env,
+  endpoint: "screenshot" | "pdf",
+  body: Record<string, unknown>,
+): Promise<Uint8Array> {
+  const token = env.CF_BROWSER_RENDERING_TOKEN;
+  const baseUrl = browserRenderingBaseUrl(env);
+  if (!token || !baseUrl) {
+    throw new Error("Browser Rendering is not configured.");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BROWSER_RENDER_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Browser Rendering request timed out.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown Browser Rendering error.");
+    throw new Error(`Browser Rendering ${endpoint} failed (${response.status}): ${errorText.slice(0, 300)}`);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const json = await response.json().catch(() => null);
+    const decoded = extractBinaryFromJson(json);
+    if (decoded) {
+      return decoded;
+    }
+    throw new Error(`Browser Rendering ${endpoint} returned JSON without binary payload.`);
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+export async function renderWarningCardPng(env: Env, payload: WarningCardPayload): Promise<Uint8Array> {
+  const svg = renderWarningCardSvg(payload);
+  const html = createRasterHtml(svg);
+  const png = await callBrowserRendering(env, "screenshot", {
+    html,
+    viewport: {
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      deviceScaleFactor: 1,
+    },
+    screenshotOptions: {
+      type: "png",
+      fullPage: false,
+      clip: {
+        x: 0,
+        y: 0,
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+      },
+    },
+    gotoOptions: {
+      waitUntil: "networkidle2",
+      timeout: 6000,
+    },
+  });
+
+  if (!hasPrefix(png, PNG_SIGNATURE)) {
+    throw new Error("Browser Rendering response was not a PNG payload.");
+  }
+
+  return png;
+}
+
+export async function renderWarningCardPdf(env: Env, payload: WarningCardPayload): Promise<Uint8Array> {
+  const svg = renderWarningCardSvg(payload);
+  const html = createRasterHtml(svg);
+  const pdf = await callBrowserRendering(env, "pdf", {
+    html,
+    pdfOptions: {
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "0.2in",
+        right: "0.2in",
+        bottom: "0.2in",
+        left: "0.2in",
+      },
+    },
+    gotoOptions: {
+      waitUntil: "networkidle2",
+      timeout: 6000,
+    },
+  });
+
+  if (!hasPrefix(pdf, PDF_SIGNATURE)) {
+    throw new Error("Browser Rendering response was not a PDF payload.");
+  }
+
+  return pdf;
+}
+
 export async function storeWarningCard(
   env: Env,
   slug: string,
   payload: WarningCardPayload,
 ): Promise<string> {
-  // NOTE: Storing as SVG for now. True PNG rasterization is a future enhancement.
-  const key = `warning-cards/${slug}.svg`;
+  const startedAt = Date.now();
+  let key = `warning-cards/${slug}.svg`;
+  let body: Uint8Array | string;
+  let contentType = "image/svg+xml";
+  let renderMode: "png" | "svg" = "svg";
   const svg = renderWarningCardSvg(payload);
 
-  await env.FILES_BUCKET.put(key, svg, {
+  if (env.WARNING_CARD_RENDER_MODE !== "svg") {
+    try {
+      body = await renderWarningCardPng(env, payload);
+      key = `warning-cards/${slug}.png`;
+      contentType = "image/png";
+      renderMode = "png";
+    } catch (error) {
+      logger.warn("warning_card_png_fallback", {
+        slug,
+        message: error instanceof Error ? error.message : "unknown",
+      });
+      body = svg;
+    }
+  } else {
+    body = svg;
+  }
+
+  await env.FILES_BUCKET.put(key, body, {
     httpMetadata: {
-      contentType: "image/svg+xml",
+      contentType,
     },
     customMetadata: {
       verdict: payload.verdict,
       headline: payload.headline,
+      render_mode: renderMode,
     },
   });
 
   await env.CACHE_KV.put(
     `warning-card:${slug}`,
-    JSON.stringify({ key, verdict: payload.verdict }),
+    JSON.stringify({ key, verdict: payload.verdict, renderMode }),
     { expirationTtl: 60 * 60 * 24 },
   );
+
+  logger.info("warning_card_rendered", {
+    slug,
+    renderMode,
+    durationMs: Date.now() - startedAt,
+  });
 
   return key;
 }

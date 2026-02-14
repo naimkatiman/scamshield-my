@@ -100,6 +100,7 @@ function baseReputationSignal(value: string): ProviderSignal {
 
 const identityProvider: Provider = {
   name: "identity_provider",
+  external: true,
   async getSignals(ctx) {
     return [baseIdentitySignal(ctx.request.value)];
   },
@@ -107,6 +108,7 @@ const identityProvider: Provider = {
 
 const riskProvider: Provider = {
   name: "risk_provider",
+  external: true,
   async getSignals(ctx) {
     return [baseScannerSignal(ctx.request.value)];
   },
@@ -114,6 +116,7 @@ const riskProvider: Provider = {
 
 const reputationProvider: Provider = {
   name: "reputation_provider",
+  external: true,
   async getSignals(ctx) {
     return [baseReputationSignal(ctx.request.value)];
   },

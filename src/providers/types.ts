@@ -8,5 +8,6 @@ export interface RiskContext {
 
 export interface Provider {
   name: string;
+  external?: boolean;
   getSignals(context: RiskContext): Promise<ProviderSignal[]>;
 }

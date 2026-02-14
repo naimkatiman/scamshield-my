@@ -4,6 +4,7 @@ import type { Provider } from "./types";
 
 export const communityProvider: Provider = {
   name: "community_db",
+  external: false,
   async getSignals(ctx) {
     const matchCount = await getCommunityMatchCount(ctx.env.DB, ctx.request.value);
 

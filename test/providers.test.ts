@@ -22,6 +22,10 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     APP_NAME: "ScamShield MY",
     REGION: "MY",
     PROVIDER_MODE: "mock",
+    JWT_SECRET: "test-jwt-secret",
+    GOOGLE_CLIENT_ID: "test-client-id",
+    GOOGLE_CLIENT_SECRET: "test-client-secret",
+    GOOGLE_REDIRECT_URI: "https://example.test/callback",
     ...overrides,
   };
 }

@@ -35,6 +35,18 @@ describe("logger", () => {
     expect(output.email).not.toContain("user@");
   });
 
+  it("masks Malaysian phone numbers in string values", () => {
+    logger.info("test", { phone: "0123456789" });
+    const output = JSON.parse(consoleSpy.mock.calls[0][0] as string);
+    expect(output.phone).toBe("012***89");
+  });
+
+  it("masks long numeric identifiers in string values", () => {
+    logger.info("test", { account: "12345678901234" });
+    const output = JSON.parse(consoleSpy.mock.calls[0][0] as string);
+    expect(output.account).toBe("123***34");
+  });
+
   it("preserves non-string values", () => {
     logger.info("test", { count: 42, flag: true });
     const output = JSON.parse(consoleSpy.mock.calls[0][0] as string);

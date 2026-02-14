@@ -89,11 +89,16 @@ export interface Env {
   CACHE_KV: KVNamespace;
   RATE_LIMIT_KV: KVNamespace;
   FILES_BUCKET: R2Bucket;
+  SCAMSHIELD_METRICS?: AnalyticsEngineDataset;
   ENRICHMENT_QUEUE: Queue<QueueMessage>;
   ASSETS: Fetcher;
   APP_NAME: string;
   REGION: string;
   PROVIDER_MODE?: "mock" | "live";
+  WARNING_CARD_RENDER_MODE?: "png" | "svg";
+  BROWSER_RENDERING_ACCOUNT_ID?: string;
+  CF_BROWSER_RENDERING_TOKEN?: string;
+  BROWSER_RENDERING_API_BASE?: string;
   COINGECKO_API_KEY?: string;
   GOPLUS_API_BASE?: string;
   HONEYPOT_API_BASE?: string;
@@ -102,4 +107,22 @@ export interface Env {
   OPENROUTER_API_KEY?: string;
   GOPLUS_APP_KEY?: string;
   GOPLUS_APP_SECRET?: string;
+  JWT_SECRET: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_REDIRECT_URI: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: "user" | "admin" | "beta";
+  created_at: string;
+}
+
+export interface Session {
+  userId: string;
+  email: string;
+  role: string;
+  exp: number;
 }

@@ -1,6 +1,6 @@
 # ScamShield MY - Execution Tracker (Cure-First)
 
-Last updated: 2026-02-14 (post-final MVP polish)
+Last updated: 2026-02-14 (Google Auth + Tiered Quotas + Multi-Mode Dashboards)
 
 ## Mission
 Build ScamShield MY as a Scam Response Kit first, detection second.
@@ -9,6 +9,12 @@ Product promise:
 "Most apps try to detect scams. We handle the part nobody solves: what to do after the scam happens - stop the bleeding, preserve evidence, generate reports, and contain the spread."
 
 ## Rule Charter (Project MUSTs)
+- **Usage Tiers (Beta Phase)**: 
+  - Free (Unauthenticated): 3 uses per day per IP.
+  - Login (Beta User): 30 uses per day.
+- **Dashboards**:
+  - Client: Usage quota, personal incident history, recovery progress (Unified in /dashboard).
+  - Admin: Global heatmap, user usage stats, system health (Unified in /reports + /dashboard).
 - Cure layer must remain useful even when detection providers fail.
 - Verdict response must always return a useful result (`LEGIT | HIGH_RISK | UNKNOWN`) with exactly 3 reason bullets.
 - Every verdict state must provide next actions.
@@ -27,6 +33,9 @@ Product promise:
 - DONE: Heatmap API and UI with trend arrows and fallback demo data.
 - DONE: Public warning page route (`/w/:slug`) and warning-card generation pipeline.
 - DONE: AI Agent interface for conversational scam assistance.
+- DONE: Usage tier enforcement (3 free / 30 login) with KV + D1 tracking.
+- DONE: Server-rendered Dashboard (Global telemetry + KPI).
+- DONE: Server-rendered Reports list (Audit stream).
 
 ### Platform architecture
 - DONE: Worker routes, D1 schema/migration, KV/R2/Queue/Cron bindings.
@@ -35,10 +44,12 @@ Product promise:
 - DONE: Rate limiting and structured logging with masking.
 - DONE: Resource IDs in `wrangler.toml` updated for production readiness.
 - DONE: Agent prompts professionalized for Production Scaling / National Utility phase.
+- DONE: D1 Schema upgrade for `users` and `usage_logs`.
+- DONE: Auth layer (Google OAuth 2.0 implementation with JWT sessions).
 
 ### Gaps blocking full rule compliance
 - DONE: Queue retry accounting now uses CF-native `msg.attempts` for correct dead-letter behavior.
-- DONE: Warning card R2 key is `.svg` matching `image/svg+xml` content-type.
+- DONE: Warning card R2 key supports both `.svg` and `.png`.
 - DONE: Live-mode verdict path uses 1800ms provider budget for ALL foreground requests.
 - DONE: nextActions logic extracted to shared `verdictRules.ts`.
 - DONE: D1 cache staleness check added (>60min entries flagged for re-enrichment).
@@ -57,9 +68,9 @@ Product promise:
   - API: `src/index.ts` (`POST /api/verdict`)
   - Scoring/reasons: `src/core/scoring.ts`
   - UI: `public/index.html`, `public/app.js`
-- Shareable warning card + public page: DONE (SVG; true PNG is future)
+- Shareable warning card + public page: DONE (True PNG rasterization via Browser Rendering API)
   - Routes: `src/index.ts` (`POST /api/warning-card`, `GET /w/:slug`)
-  - Storage: `src/core/warningCard.ts`
+  - Storage: `src/core/warningCard.ts` (PNG + SVG dual mode)
 - Heatmap (platform x category + trend): DONE
   - Data: `src/db/repository.ts` (`getHeatmapGrid`, `rollupHeatmap`)
   - Route/UI: `src/index.ts` + `public/app.js`
@@ -96,12 +107,13 @@ Completed:
 - D1 migration includes required base tables plus daily rollup table.
 - Core frontend pages/sections are implemented.
 - **Production resource IDs provided in `wrangler.toml`.**
+- **Google OAuth flow and JWT session management implemented.**
 
 Remaining:
 - None.
 
 ## Agent 2 -> Refactor + Optimize Logic
-Status: DONE (MVP)
+Status: DONE
 
 Completed:
 - Live provider client layer exists (CoinGecko/GoPlus/Honeypot/Chainabuse/CryptoScamDB).
@@ -109,9 +121,10 @@ Completed:
 - KV + D1 cache layering implemented.
 - Queue pipeline and scheduled heatmap rollup implemented.
 - Live-mode <2s SLO enforced (1800ms provider budget).
+- **True PNG rasterization for warning cards (Browser Rendering API).**
+- **Usage quota tracking and enforcement (Free vs Login).**
 
 Remaining:
-- True PNG rasterization for warning cards (Browser Rendering API).
 - Improve provider-specific 429 handling/backoff strategy.
 
 ## Agent 3 -> UX Polish + Copywriting
@@ -125,6 +138,7 @@ Completed:
 - **Final pass on "official enough" warning-card visual.**
 - **Mobile QA checklist and spacing tweaks for small screens.**
 - **Tightened unknown-state copy for better clarity.**
+- **Auth UI components and quota visualization.**
 
 Remaining:
 - None.
@@ -146,9 +160,9 @@ Remaining:
 
 ## Immediate Next Sprint (Scaling + Monitoring)
 1. Deploy final build to production and run smoke tests.
-2. Implement true PNG card rasterization using Cloudflare Browser Rendering API.
-3. Configure Cloudflare Observability alerts for provider timeout spikes (>10% per min).
-4. Expand Malaysia-specific playbook content with direct links to BNM/PDRM portals.
+2. Expand Malaysia-specific playbook content with direct links to BNM/PDRM portals.
+3. Implement localized Bahasa Melayu translation toggle for high-stress situations.
+4. Configure Cloudflare Observability alerts for provider timeout spikes (>10% per min).
 
 ## Definition of Done Gates (Enforced)
 - Verdict API returns in under 2 seconds for cached/degraded path.
@@ -157,4 +171,3 @@ Remaining:
 - Heatmap shows non-zero data and trend arrows.
 - Playbook and reports are copyable in one tap.
 - Unit + integration tests exist and pass.
-

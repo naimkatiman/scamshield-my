@@ -74,22 +74,40 @@ function padReasons(parsed: string[]): [string, string, string] {
   ];
 }
 
-export async function getCachedVerdict(db: D1Database, key: string): Promise<VerdictResult | null> {
+export interface CachedVerdictRecord {
+  result: VerdictResult;
+  updatedAt: string;
+}
+
+export async function getCachedVerdictRecord(db: D1Database, key: string): Promise<CachedVerdictRecord | null> {
   const row = await db.prepare("SELECT * FROM verdict_cache WHERE key = ?").bind(key).first<CachedVerdictRow>();
   if (!row) {
     return null;
   }
 
   return {
-    verdict: row.verdict,
-    score: row.score,
-    reasons: padReasons(parseJsonArray(row.reasons_json)),
-    sources: parseJsonArray(row.sources_json),
-    nextActions: nextActionsForVerdict(row.verdict),
+    result: {
+      verdict: row.verdict,
+      score: row.score,
+      reasons: padReasons(parseJsonArray(row.reasons_json)),
+      sources: parseJsonArray(row.sources_json),
+      nextActions: nextActionsForVerdict(row.verdict),
+    },
+    updatedAt: row.updated_at,
   };
 }
 
-export async function upsertVerdictCache(db: D1Database, key: string, verdict: VerdictResult): Promise<void> {
+export async function getCachedVerdict(db: D1Database, key: string): Promise<VerdictResult | null> {
+  const cached = await getCachedVerdictRecord(db, key);
+  return cached?.result ?? null;
+}
+
+export async function upsertVerdictCache(
+  db: D1Database,
+  key: string,
+  verdict: VerdictResult,
+  updatedAt = new Date().toISOString(),
+): Promise<void> {
   await db
     .prepare(
       `INSERT INTO verdict_cache (key, verdict, score, reasons_json, sources_json, updated_at)
@@ -107,7 +125,7 @@ export async function upsertVerdictCache(db: D1Database, key: string, verdict: V
       verdict.score,
       JSON.stringify(verdict.reasons),
       JSON.stringify(verdict.sources),
-      new Date().toISOString(),
+      updatedAt,
     )
     .run();
 }

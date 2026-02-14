@@ -22,6 +22,24 @@
   <div id="toast-container" class="toast-container"></div>
 
   <main class="container">
+    <!-- Auth Top Bar -->
+    <div id="auth-bar" class="auth-bar">
+      <div class="auth-bar-left">
+        <span id="quota-badge" class="quota-badge hidden">
+          <span id="quota-text">—</span>
+        </span>
+      </div>
+      <div class="auth-bar-right">
+        <a id="auth-login" href="/api/auth/login" class="btn btn-sm btn-auth">
+          <span class="auth-icon">&#x1F512;</span> Sign in with Google
+        </a>
+        <div id="auth-user" class="auth-user hidden">
+          <span id="auth-email" class="auth-email"></span>
+          <a href="/api/auth/logout" class="btn btn-sm btn-auth btn-auth--logout">Sign out</a>
+        </div>
+      </div>
+    </div>
+
     <!-- Mode Switcher -->
     <div class="mode-switcher">
       <button id="mode-ai" class="mode-btn mode-btn--active" data-mode="ai">

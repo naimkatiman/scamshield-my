@@ -5,7 +5,50 @@ const state = {
   recoveryTasks: [],
   completedTaskIds: new Set(),
   latestWarning: null,
+  auth: null, // { authenticated, email, role, usage }
 };
+
+/* ── Auth State ── */
+
+async function initAuth() {
+  try {
+    const data = await fetch("/api/auth/me").then((r) => r.json());
+    state.auth = data;
+
+    const loginEl = document.getElementById("auth-login");
+    const userEl = document.getElementById("auth-user");
+    const emailEl = document.getElementById("auth-email");
+    const quotaBadge = document.getElementById("quota-badge");
+    const quotaText = document.getElementById("quota-text");
+
+    if (data.authenticated) {
+      if (loginEl) loginEl.classList.add("hidden");
+      if (userEl) userEl.classList.remove("hidden");
+      if (emailEl) emailEl.textContent = data.email;
+
+      if (quotaBadge && data.usage) {
+        quotaBadge.classList.remove("hidden");
+        const { remaining, limit } = data.usage;
+        quotaText.textContent = `${remaining}/${limit} left today`;
+        quotaBadge.classList.remove("quota-badge--warn", "quota-badge--danger");
+        if (remaining <= 3) quotaBadge.classList.add("quota-badge--danger");
+        else if (remaining <= 10) quotaBadge.classList.add("quota-badge--warn");
+      }
+    } else {
+      // Show quota for free users too
+      const quotaRes = await fetch("/api/quota").then((r) => r.json());
+      if (quotaBadge && quotaRes) {
+        quotaBadge.classList.remove("hidden");
+        quotaText.textContent = `${quotaRes.remaining}/${quotaRes.limit} free today`;
+        quotaBadge.classList.remove("quota-badge--warn", "quota-badge--danger");
+        if (quotaRes.remaining <= 1) quotaBadge.classList.add("quota-badge--danger");
+        else if (quotaRes.remaining <= 2) quotaBadge.classList.add("quota-badge--warn");
+      }
+    }
+  } catch {
+    // Silently fail — auth is non-blocking
+  }
+}
 
 /* ── Utilities ── */
 
@@ -75,16 +118,16 @@ function verdictStateCopy(verdict, pendingEnrichment, providerErrors = []) {
     return {
       tone: "legit",
       text: degraded
-        ? "No high-risk signal yet, but live enrichment is still in progress. Stay cautious and verify through official channels."
-        : "No high-risk signal is currently detected. Keep monitoring and verify all payment requests through official channels.",
+        ? "No high-risk signal yet. Verification is active. Confirm details through official channels while we finalize checks."
+        : "No high-risk signal detected. This does not guarantee safety—always verify payment requests through official channels.",
     };
   }
 
   return {
     tone: "unknown",
     text: degraded
-      ? "Result is UNKNOWN because provider signals are delayed or incomplete. Treat as unverified and run the emergency steps now."
-      : "Result is UNKNOWN because signals are inconclusive. Treat as unverified and proceed with reporting and safety checks.",
+      ? "Result UNKNOWN. Live systems are syncing. Treat as unverified: do not send funds and follow the emergency steps."
+      : "Result UNKNOWN. Signals are inconclusive. Treat as unverified and proceed with caution. Use the checklist below.",
   };
 }
 
@@ -107,6 +150,23 @@ const ACTION_SCROLL_MAP = {
   "Verify Official Channels": null,
   "Monitor Activity": null,
 };
+
+function scrollToAndHighlight(selector) {
+  const el = document.querySelector(selector);
+  if (!el) return;
+
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Flash highlight
+  el.style.transition = "box-shadow 0.3s ease, border-color 0.3s ease";
+  el.style.boxShadow = "0 0 0 4px rgba(37, 99, 235, 0.2)";
+  el.style.borderColor = "var(--brand-action)";
+
+  setTimeout(() => {
+    el.style.boxShadow = "";
+    el.style.borderColor = "";
+  }, 1500);
+}
 
 async function onVerdictSubmit(event) {
   event.preventDefault();
@@ -167,9 +227,7 @@ async function onVerdictSubmit(event) {
       btn.textContent = action;
       const scrollTarget = ACTION_SCROLL_MAP[action];
       if (scrollTarget) {
-        btn.addEventListener("click", () => {
-          document.querySelector(scrollTarget)?.scrollIntoView({ behavior: "smooth" });
-        });
+        btn.addEventListener("click", () => scrollToAndHighlight(scrollTarget));
       }
       ctaRow.appendChild(btn);
     });
@@ -611,235 +669,254 @@ function flashCopied(btn) {
 
 /* ── Smooth Scroll for Nav Pills ── */
 
-function initSmoothScroll() {
-  document.querySelectorAll("[data-scroll]").forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      const target = document.querySelector(link.getAttribute("href"));
-      target?.scrollIntoView({ behavior: "smooth" });
+async function boot() {
+  function initSmoothScroll() {
+    document.querySelectorAll("[data-scroll]").forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute("href"));
+        if (target) scrollToAndHighlight(link.getAttribute("href"));
+      });
     });
-  });
-}
-
-/* ── Mode Switcher ── */
-
-function initModeSwitcher() {
-  const aiBtn = $("mode-ai");
-  const manualBtn = $("mode-manual");
-  const aiPanel = $("ai-mode");
-  const manualPanel = $("manual-mode");
-
-  if (!aiBtn || !manualBtn || !aiPanel || !manualPanel) return;
-
-  function setMode(mode) {
-    if (mode === "ai") {
-      aiBtn.classList.add("mode-btn--active");
-      manualBtn.classList.remove("mode-btn--active");
-      aiPanel.classList.remove("hidden");
-      manualPanel.classList.add("hidden");
-    } else {
-      manualBtn.classList.add("mode-btn--active");
-      aiBtn.classList.remove("mode-btn--active");
-      manualPanel.classList.remove("hidden");
-      aiPanel.classList.add("hidden");
-    }
-    localStorage.setItem("scamshield-mode", mode);
   }
 
-  aiBtn.addEventListener("click", () => setMode("ai"));
-  manualBtn.addEventListener("click", () => setMode("manual"));
+  /* ── Mode Switcher ── */
 
-  // Restore saved mode
-  const saved = localStorage.getItem("scamshield-mode");
-  if (saved === "manual") setMode("manual");
-}
+  function initModeSwitcher() {
+    const aiBtn = $("mode-ai");
+    const manualBtn = $("mode-manual");
+    const aiPanel = $("ai-mode");
+    const manualPanel = $("manual-mode");
 
-/* ── AI Chat ── */
+    if (!aiBtn || !manualBtn || !aiPanel || !manualPanel) return;
 
-const aiState = {
-  messages: [],
-  streaming: false,
-};
+    function setMode(mode) {
+      if (mode === "ai") {
+        aiBtn.classList.add("mode-btn--active");
+        manualBtn.classList.remove("mode-btn--active");
+        aiPanel.classList.remove("hidden");
+        manualPanel.classList.add("hidden");
+      } else {
+        manualBtn.classList.add("mode-btn--active");
+        aiBtn.classList.remove("mode-btn--active");
+        manualPanel.classList.remove("hidden");
+        aiPanel.classList.add("hidden");
+      }
+      localStorage.setItem("scamshield-mode", mode);
+    }
 
-function simpleMarkdown(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/^### (.+)$/gm, '<h4 class="ai-md-h3">$1</h4>')
-    .replace(/^## (.+)$/gm, '<h3 class="ai-md-h2">$1</h3>')
-    .replace(/^# (.+)$/gm, '<h2 class="ai-md-h1">$1</h2>')
-    .replace(/^- (.+)$/gm, '<li class="ai-md-li">$1</li>')
-    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (m) => `<ul class="ai-md-ul">${m}</ul>`)
-    .replace(/^\d+\. (.+)$/gm, '<li class="ai-md-oli">$1</li>')
-    .replace(/(<li class="ai-md-oli">.*<\/li>\n?)+/g, (m) => `<ol class="ai-md-ol">${m}</ol>`)
-    .replace(/\n{2,}/g, "</p><p>")
-    .replace(/\n/g, "<br>");
-}
+    aiBtn.addEventListener("click", () => setMode("ai"));
+    manualBtn.addEventListener("click", () => setMode("manual"));
 
-function appendAiMessage(role, content) {
-  const container = $("ai-chat-messages");
-  if (!container) return null;
+    // Restore saved mode
+    const saved = localStorage.getItem("scamshield-mode");
+    if (saved === "manual") setMode("manual");
+  }
 
-  const msg = document.createElement("div");
-  msg.className = `ai-msg ai-msg--${role}`;
+  /* ── AI Chat ── */
 
-  if (role === "assistant") {
-    msg.innerHTML = `
+  const aiState = {
+    messages: [],
+    streaming: false,
+  };
+
+  function simpleMarkdown(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`(.+?)`/g, "<code>$1</code>")
+      .replace(/^### (.+)$/gm, '<h4 class="ai-md-h3">$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3 class="ai-md-h2">$1</h3>')
+      .replace(/^# (.+)$/gm, '<h2 class="ai-md-h1">$1</h2>')
+      .replace(/^- (.+)$/gm, '<li class="ai-md-li">$1</li>')
+      .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (m) => `<ul class="ai-md-ul">${m}</ul>`)
+      .replace(/^\d+\. (.+)$/gm, '<li class="ai-md-oli">$1</li>')
+      .replace(/(<li class="ai-md-oli">.*<\/li>\n?)+/g, (m) => `<ol class="ai-md-ol">${m}</ol>`)
+      .replace(/\n{2,}/g, "</p><p>")
+      .replace(/\n/g, "<br>");
+  }
+
+  function appendAiMessage(role, content) {
+    const container = $("ai-chat-messages");
+    if (!container) return null;
+
+    const msg = document.createElement("div");
+    msg.className = `ai-msg ai-msg--${role}`;
+
+    if (role === "assistant") {
+      msg.innerHTML = `
       <div class="ai-msg-avatar">&#x1F6E1;</div>
       <div class="ai-msg-bubble"><p>${simpleMarkdown(content)}</p></div>
     `;
-  } else {
-    msg.innerHTML = `
+    } else {
+      msg.innerHTML = `
       <div class="ai-msg-bubble"><p>${escapeHtml(content)}</p></div>
     `;
-  }
-
-  container.appendChild(msg);
-  container.scrollTop = container.scrollHeight;
-  return msg;
-}
-
-async function sendAiMessage(userText) {
-  if (aiState.streaming || !userText.trim()) return;
-
-  const input = $("ai-chat-input");
-  const sendBtn = $("ai-chat-send");
-  const btnText = sendBtn?.querySelector(".btn-text");
-  const btnLoader = sendBtn?.querySelector(".btn-loader");
-
-  // Add user message
-  aiState.messages.push({ role: "user", content: userText.trim() });
-  appendAiMessage("user", userText.trim());
-
-  // Clear input
-  if (input) { input.value = ""; input.style.height = "auto"; }
-
-  // Hide quick actions after first message
-  const quickActions = document.querySelector(".ai-quick-actions");
-  if (quickActions) quickActions.classList.add("hidden");
-
-  // Loading state
-  aiState.streaming = true;
-  if (sendBtn) sendBtn.disabled = true;
-  if (btnText) btnText.classList.add("hidden");
-  if (btnLoader) btnLoader.classList.remove("hidden");
-
-  // Create assistant message placeholder
-  const assistantMsg = appendAiMessage("assistant", "");
-  const bubble = assistantMsg?.querySelector(".ai-msg-bubble");
-  let fullContent = "";
-
-  try {
-    const response = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: aiState.messages.slice(-20) }),
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `Request failed: ${response.status}`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    container.appendChild(msg);
+    container.scrollTop = container.scrollHeight;
+    return msg;
+  }
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+  async function sendAiMessage(userText) {
+    if (aiState.streaming || !userText.trim()) return;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+    const input = $("ai-chat-input");
+    const sendBtn = $("ai-chat-send");
+    const btnText = sendBtn?.querySelector(".btn-text");
+    const btnLoader = sendBtn?.querySelector(".btn-loader");
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") continue;
+    // Add user message
+    aiState.messages.push({ role: "user", content: userText.trim() });
+    appendAiMessage("user", userText.trim());
 
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) {
-            fullContent += delta;
-            if (bubble) bubble.innerHTML = `<p>${simpleMarkdown(fullContent)}</p>`;
-          }
-        } catch {
-          // skip malformed chunks
-        }
+    // Clear input
+    if (input) { input.value = ""; input.style.height = "auto"; }
+
+    // Hide quick actions after first message
+    const quickActions = document.querySelector(".ai-quick-actions");
+    if (quickActions) quickActions.classList.add("hidden");
+
+    // Loading state
+    aiState.streaming = true;
+    if (sendBtn) sendBtn.disabled = true;
+    if (btnText) btnText.classList.add("hidden");
+    if (btnLoader) btnLoader.classList.remove("hidden");
+
+    // Create assistant message placeholder
+    const assistantMsg = appendAiMessage("assistant", "");
+    const bubble = assistantMsg?.querySelector(".ai-msg-bubble");
+    let fullContent = "";
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: aiState.messages.slice(-20) }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Request failed: ${response.status}`);
       }
 
-      // Keep scrolled to bottom
-      const container = $("ai-chat-messages");
-      if (container) container.scrollTop = container.scrollHeight;
-    }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-    // Save assistant response
-    if (fullContent) {
-      aiState.messages.push({ role: "assistant", content: fullContent });
-    } else {
-      if (bubble) bubble.innerHTML = `<p class="ai-msg-error">No response received. Please try again.</p>`;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullContent += delta;
+              if (bubble) bubble.innerHTML = `<p>${simpleMarkdown(fullContent)}</p>`;
+            }
+          } catch {
+            // skip malformed chunks
+          }
+        }
+
+        // Keep scrolled to bottom
+        const container = $("ai-chat-messages");
+        if (container) container.scrollTop = container.scrollHeight;
+      }
+
+      // Save assistant response
+      if (fullContent) {
+        aiState.messages.push({ role: "assistant", content: fullContent });
+      } else {
+        if (bubble) bubble.innerHTML = `<p class="ai-msg-error">No response received. Please try again.</p>`;
+      }
+    } catch (error) {
+      if (bubble) bubble.innerHTML = `<p class="ai-msg-error">${escapeHtml(error.message)}</p>`;
+      showToast(error.message, "error");
+    } finally {
+      aiState.streaming = false;
+      if (sendBtn) sendBtn.disabled = false;
+      if (btnText) btnText.classList.remove("hidden");
+      if (btnLoader) btnLoader.classList.add("hidden");
     }
-  } catch (error) {
-    if (bubble) bubble.innerHTML = `<p class="ai-msg-error">${escapeHtml(error.message)}</p>`;
-    showToast(error.message, "error");
-  } finally {
-    aiState.streaming = false;
-    if (sendBtn) sendBtn.disabled = false;
-    if (btnText) btnText.classList.remove("hidden");
-    if (btnLoader) btnLoader.classList.add("hidden");
   }
-}
 
-function initAiChat() {
-  const form = $("ai-chat-form");
-  const input = $("ai-chat-input");
+  function initAiChat() {
+    const form = $("ai-chat-form");
+    const input = $("ai-chat-input");
 
-  form?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    sendAiMessage(input?.value || "");
-  });
-
-  // Enter to send (Shift+Enter for newline)
-  input?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    form?.addEventListener("submit", (e) => {
       e.preventDefault();
-      sendAiMessage(input.value);
-    }
-  });
-
-  // Auto-resize textarea
-  input?.addEventListener("input", () => {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 120) + "px";
-  });
-
-  // Quick action buttons
-  document.querySelectorAll(".ai-quick-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const prompt = btn.dataset.prompt;
-      if (prompt) sendAiMessage(prompt);
+      sendAiMessage(input?.value || "");
     });
+
+    // Enter to send (Shift+Enter for newline)
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendAiMessage(input.value);
+      }
+    });
+
+    // Auto-resize textarea
+    input?.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    });
+
+    // Quick action buttons
+    document.querySelectorAll(".ai-quick-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const prompt = btn.dataset.prompt;
+        if (prompt) sendAiMessage(prompt);
+      });
+    });
+  }
+
+  /* ── Init ── */
+  document.addEventListener("DOMContentLoaded", () => {
+    initAuth();
+    initModeSwitcher();
+    initAiChat();
+    wireCopyButtons();
+    initSmoothScroll();
+    initReportTabs();
+
+    // Load initial data
+    loadPlaybook().catch(console.error);
+    loadHeatmap().catch(console.error);
+
+    const verdictForm = $("verdict-form");
+    if (verdictForm) verdictForm.addEventListener("submit", onVerdictSubmit);
+
+    const reportForm = $("report-generate-form");
+    if (reportForm) reportForm.addEventListener("submit", onReportGenerateSubmit);
+
+    const warningForm = $("warning-form");
+    if (warningForm) warningForm.addEventListener("submit", onWarningSubmit);
+
+    // Mobile Viewport Fix (dvh fallback)
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
   });
-}
-
-/* ── Boot ── */
-
-async function boot() {
-  initModeSwitcher();
-  initAiChat();
-  initSmoothScroll();
-  initReportTabs();
-  wireCopyButtons();
-
-  $("verdict-form")?.addEventListener("submit", onVerdictSubmit);
-  $("report-generate-form")?.addEventListener("submit", onReportGenerateSubmit);
-  $("warning-form")?.addEventListener("submit", onWarningSubmit);
 
   const warningVerdictSelect = document.querySelector("#warning-form select[name='verdict']");
   warningVerdictSelect?.addEventListener("change", (event) => {

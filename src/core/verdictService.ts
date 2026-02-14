@@ -1,4 +1,4 @@
-import { getCachedVerdict, upsertVerdictCache } from "../db/repository";
+import { getCachedVerdictRecord, upsertVerdictCache } from "../db/repository";
 import { collectProviderSignals } from "../providers";
 import type { Env, VerdictRequest, VerdictResult } from "../types";
 import { logger } from "./logger";
@@ -15,6 +15,7 @@ const D1_STALE_AFTER_MS = 1000 * 60 * 60; // 60 min (D1 layer — serve stale bu
 const FOREGROUND_PROVIDER_TIMEOUT_MS = 1800;
 /** Queue/background enrichment timeout budget. */
 const BACKGROUND_PROVIDER_TIMEOUT_MS = 4000;
+const inflightForegroundEvaluations = new Map<string, Promise<EvaluatedVerdict>>();
 
 function unknownFallback(): VerdictResult {
   return {
@@ -46,6 +47,29 @@ export async function evaluateVerdict(
   background = false,
 ): Promise<EvaluatedVerdict> {
   const key = buildCacheKey(request.type, request.value, request.chain ?? "evm");
+
+  if (background) {
+    return evaluateVerdictInternal(request, env, key, true);
+  }
+
+  const existing = inflightForegroundEvaluations.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const pending = evaluateVerdictInternal(request, env, key, false).finally(() => {
+    inflightForegroundEvaluations.delete(key);
+  });
+  inflightForegroundEvaluations.set(key, pending);
+  return pending;
+}
+
+async function evaluateVerdictInternal(
+  request: VerdictRequest,
+  env: Env,
+  key: string,
+  background: boolean,
+): Promise<EvaluatedVerdict> {
   const now = Date.now();
 
   // --- Layer 1: KV hot cache ---
@@ -68,27 +92,23 @@ export async function evaluateVerdict(
 
   // --- Layer 2: D1 persistent cache ---
   try {
-    const cached = await getCachedVerdict(env.DB, key);
-    if (cached) {
-      // Check D1 staleness — cached row has updated_at but getCachedVerdict doesn't expose it.
-      // We check via a separate lightweight query to avoid changing the return type.
-      const ageRow = await env.DB.prepare(
-        "SELECT updated_at FROM verdict_cache WHERE key = ?"
-      ).bind(key).first<{ updated_at: string }>();
-      const d1Age = ageRow ? now - new Date(ageRow.updated_at).getTime() : 0;
+    const cachedRecord = await getCachedVerdictRecord(env.DB, key);
+    if (cachedRecord) {
+      const updatedAtMs = new Date(cachedRecord.updatedAt).getTime();
+      const d1Age = Number.isFinite(updatedAtMs) ? now - updatedAtMs : 0;
       const d1Stale = d1Age > D1_STALE_AFTER_MS;
 
       // Populate KV hot cache from D1 (best-effort)
       try {
         await env.CACHE_KV.put(
           `verdict:${key}`,
-          JSON.stringify({ updatedAt: now, result: cached }),
+          JSON.stringify({ updatedAt: Number.isFinite(updatedAtMs) ? updatedAtMs : now, result: cachedRecord.result }),
           { expirationTtl: HOT_CACHE_TTL_SECONDS },
         );
       } catch {
         logger.warn("kv_cache_write_failed", { key });
       }
-      return { key, result: cached, pendingEnrichment: d1Stale, providerErrors: [], timings: {}, cached: true };
+      return { key, result: cachedRecord.result, pendingEnrichment: d1Stale, providerErrors: [], timings: {}, cached: true };
     }
   } catch {
     logger.warn("d1_cache_read_failed", { key });
@@ -100,12 +120,14 @@ export async function evaluateVerdict(
 
   if (providerData.signals.length === 0) {
     const fallback = unknownFallback();
+    const fallbackUpdatedAt = new Date().toISOString();
+    const fallbackUpdatedAtMs = new Date(fallbackUpdatedAt).getTime();
     // Best-effort cache writes
-    try { await upsertVerdictCache(env.DB, key, fallback); } catch { /* ignore */ }
+    try { await upsertVerdictCache(env.DB, key, fallback, fallbackUpdatedAt); } catch { /* ignore */ }
     try {
       await env.CACHE_KV.put(
         `verdict:${key}`,
-        JSON.stringify({ updatedAt: now, result: fallback }),
+        JSON.stringify({ updatedAt: fallbackUpdatedAtMs, result: fallback }),
         { expirationTtl: HOT_CACHE_TTL_SECONDS },
       );
     } catch { /* ignore */ }
@@ -121,15 +143,17 @@ export async function evaluateVerdict(
 
   const normalized = normalizeSignals(providerData.signals);
   const result = computeVerdict(normalized);
+  const updatedAt = new Date().toISOString();
+  const updatedAtMs = new Date(updatedAt).getTime();
 
   // Persist to both cache layers (best-effort)
-  try { await upsertVerdictCache(env.DB, key, result); } catch {
+  try { await upsertVerdictCache(env.DB, key, result, updatedAt); } catch {
     logger.warn("d1_cache_write_failed", { key });
   }
   try {
     await env.CACHE_KV.put(
       `verdict:${key}`,
-      JSON.stringify({ updatedAt: now, result }),
+      JSON.stringify({ updatedAt: updatedAtMs, result }),
       { expirationTtl: HOT_CACHE_TTL_SECONDS },
     );
   } catch {
