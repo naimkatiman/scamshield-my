@@ -1,450 +1,530 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ScamShield MY - Scam Response Kit</title>
-  <meta name="description" content="Got scammed? ScamShield MY helps you stop the bleeding, preserve evidence, generate reports, and contain the spread. Malaysia-focused scam response toolkit.">
+  <meta name="description"
+    content="Got scammed? ScamShield MY helps you stop the bleeding, preserve evidence, generate reports, and contain the spread. Malaysia-focused scam response toolkit.">
   <meta property="og:title" content="ScamShield MY - Scam Response Kit">
   <meta property="og:description" content="Most apps detect scams. We handle what happens after.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
-  <div class="bg-shape bg-shape-a"></div>
-  <div class="bg-shape bg-shape-b"></div>
-  <div class="bg-shape bg-shape-c"></div>
 
-  <!-- Toast container -->
-  <div id="toast-container" class="toast-container"></div>
+  <!-- Offline Banner -->
+  <div id="offline-banner" class="offline-banner hidden">
+    <svg class="icon"><use href="#icon-alert-triangle"></use></svg>
+    <span>You're offline. Some features may not work.</span>
+  </div>
 
-  <main class="container">
-    <!-- Auth Top Bar -->
-    <div id="auth-bar" class="auth-bar">
-      <div class="auth-bar-left">
-        <span id="quota-badge" class="quota-badge hidden">
-          <span id="quota-text">—</span>
-        </span>
-      </div>
-      <div class="auth-bar-right">
-        <a id="auth-login" href="/api/auth/login" class="btn btn-sm btn-auth">
-          <span class="auth-icon">&#x1F512;</span> Sign in with Google
-        </a>
-        <div id="auth-user" class="auth-user hidden">
-          <span id="auth-email" class="auth-email"></span>
-          <a href="/api/auth/logout" class="btn btn-sm btn-auth btn-auth--logout">Sign out</a>
-        </div>
-      </div>
+  <div class="parallax-wrapper">
+    <div class="parallax-layer parallax-deep">
+      <div class="bg-shape bg-shape-a"></div>
+      <div class="bg-shape bg-shape-b"></div>
+      <div class="bg-shape bg-shape-c"></div>
+      <div id="ascii-bg" class="ascii-bg"></div>
     </div>
 
-    <!-- Mode Switcher -->
-    <div class="mode-switcher">
-      <button id="mode-ai" class="mode-btn mode-btn--active" data-mode="ai">
-        <span class="mode-icon">&#x2728;</span> AI Assistant
-      </button>
-      <button id="mode-manual" class="mode-btn" data-mode="manual">
-        <span class="mode-icon">&#x1F527;</span> Manual Toolkit
-      </button>
-    </div>
+    <div class="parallax-layer parallax-base">
 
-    <!-- ============================================================ -->
-    <!--  AI MODE                                                      -->
-    <!-- ============================================================ -->
-    <div id="ai-mode" class="mode-panel">
-      <header class="hero card ai-hero">
-        <div class="hero-badge">
-          <span class="shield-icon">&#x1F6E1;</span>
-          <span class="eyebrow">ScamShield MY</span>
-        </div>
-        <h1>Got scammed?<br>Tell me what happened.</h1>
-        <p class="killer-line">AI-powered scam response. Describe your situation and I'll guide you through immediate actions.</p>
-      </header>
+      <!-- Toast container -->
+      <div id="toast-container" class="toast-container"></div>
 
-      <section class="card ai-chat-card">
-        <div id="ai-chat-messages" class="ai-chat-messages">
-          <div class="ai-msg ai-msg--assistant">
-            <div class="ai-msg-avatar">&#x1F6E1;</div>
-            <div class="ai-msg-bubble">
-              <p><strong>I'm your ScamShield AI assistant.</strong></p>
-              <p>Tell me what happened — what type of scam, when it occurred, and what you've done so far. I'll guide you through the fastest containment steps.</p>
-              <p class="ai-msg-hint">You can write in English or Bahasa Melayu.</p>
-            </div>
+      <main class="container">
+        <!-- Auth Top Bar -->
+        <div id="auth-bar" class="auth-bar">
+          <div class="auth-bar-left">
+            <span class="trust-badge">
+              <svg class="icon trust-icon">
+                <use href="#icon-check-verified"></use>
+              </svg>
+              <span data-i18n="nav.community_edition">Community Edition</span>
+            </span>
+            <span id="quota-badge" class="quota-badge hidden">
+              <span id="quota-text">—</span>
+            </span>
           </div>
-        </div>
-
-        <form id="ai-chat-form" class="ai-chat-input-row">
-          <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Describe your situation... e.g. &quot;I sent RM5,000 to a fake investment group on Telegram 2 hours ago&quot;" rows="2"></textarea>
-          <button type="submit" id="ai-chat-send" class="btn btn-primary ai-chat-send">
-            <span class="btn-text">Send</span>
-            <span class="btn-loader hidden">...</span>
-          </button>
-        </form>
-      </section>
-
-      <div class="ai-quick-actions">
-        <button class="ai-quick-btn" data-prompt="I just got scammed on Telegram. What do I do first?">I got scammed — what now?</button>
-        <button class="ai-quick-btn" data-prompt="Can you help me check if this wallet address is a scam?">Check a wallet address</button>
-        <button class="ai-quick-btn" data-prompt="Help me generate a police report for a scam I experienced.">Generate a report</button>
-        <button class="ai-quick-btn" data-prompt="What are the emergency numbers I should call in Malaysia?">Emergency contacts</button>
-      </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!--  MANUAL MODE                                                   -->
-    <!-- ============================================================ -->
-    <div id="manual-mode" class="mode-panel hidden">
-    <!-- Hero -->
-    <header class="hero card">
-      <div class="hero-badge">
-        <span class="shield-icon">&#x1F6E1;</span>
-        <span class="eyebrow">ScamShield MY</span>
-      </div>
-      <h1>Got scammed?<br>Start treatment in <span class="text-accent">15 minutes.</span></h1>
-      <p id="killer-line" class="killer-line"></p>
-      <nav class="hero-nav">
-        <a href="/dashboard" class="nav-pill">Server Dashboard</a>
-        <a href="/reports" class="nav-pill">Report Queue</a>
-        <a href="#verdict-section" class="nav-pill" data-scroll>Check Suspect</a>
-        <a href="#emergency-playbook" class="nav-pill nav-pill--urgent" data-scroll>Emergency Playbook</a>
-        <a href="#report-generator" class="nav-pill" data-scroll>Generate Reports</a>
-        <a href="#recovery-checklist" class="nav-pill" data-scroll>Recovery Checklist</a>
-      </nav>
-    </header>
-
-    <!-- 1. Verdict -->
-    <section class="card" id="verdict-section">
-      <div class="section-header">
-        <span class="section-number">01</span>
-        <div>
-          <h2>One-Screen Verdict</h2>
-          <p class="section-subtitle">Paste a wallet, contract, or handle. Get an instant risk assessment.</p>
-        </div>
-      </div>
-
-      <form id="verdict-form" class="verdict-form">
-        <div class="form-row">
-          <label class="form-field">
-            <span class="form-label">Input Type</span>
-            <select id="verdict-type" name="type">
-              <option value="contract">Token Contract (EVM)</option>
-              <option value="wallet">Wallet Address (EVM)</option>
-              <option value="handle">Handle (Telegram / WhatsApp / IG)</option>
-            </select>
-          </label>
-          <label class="form-field form-field--grow">
-            <span class="form-label">Value</span>
-            <input id="verdict-value" name="value" placeholder="0x... or @handle" required>
-          </label>
-          <label class="form-field form-field--small">
-            <span class="form-label">Chain</span>
-            <input id="verdict-chain" name="chain" placeholder="eth">
-          </label>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg" id="verdict-submit">
-          <span class="btn-text">Analyze Now</span>
-          <span class="btn-loader hidden">Analyzing...</span>
-        </button>
-      </form>
-
-      <article id="verdict-result" class="verdict-result hidden">
-        <div class="verdict-top">
-          <div class="verdict-badge-wrap">
-            <span id="verdict-badge" class="verdict-badge">UNKNOWN</span>
-            <div class="verdict-score-wrap">
-              <span class="score-label">Risk Score</span>
-              <div class="score-bar-track">
-                <div id="verdict-score-bar" class="score-bar" style="width:0%"></div>
+          <div class="auth-bar-right">
+            <button id="lang-toggle" class="btn btn-sm btn-ghost" aria-label="Switch Language">BM</button>
+            <a id="auth-login" href="/api/auth/login" class="btn btn-sm btn-auth">
+              <svg class="icon">
+                <use href="#icon-lock"></use>
+              </svg> <span data-i18n="nav.signin">Sign in with Google</span>
+            </a>
+            <div id="auth-user" class="auth-user hidden">
+              <span id="auth-email" class="auth-email"></span>
+              <div id="auth-nav-links" class="dash-nav-links">
+                <a href="/dashboard-client.html" class="dash-nav-link" data-i18n="nav.dashboard">Dashboard</a>
+                <a id="auth-admin-link" href="/dashboard-admin.html" class="dash-nav-link hidden"
+                  data-i18n="nav.admin">Admin</a>
               </div>
-              <span id="verdict-score" class="score-value">--</span>
+              <a href="/api/auth/logout" class="btn btn-sm btn-auth btn-auth--logout" data-i18n="nav.signout">Sign
+                out</a>
             </div>
           </div>
         </div>
 
-        <div id="verdict-reasons" class="verdict-reasons"></div>
-        <p id="verdict-state-copy" class="verdict-state-copy hidden"></p>
-
-        <div class="verdict-cta-block">
-          <p class="cta-label">Next steps:</p>
-          <div id="verdict-next-actions" class="cta-row"></div>
-        </div>
-
-        <p id="verdict-meta" class="meta"></p>
-      </article>
-    </section>
-
-    <!-- 2. Emergency Playbook -->
-    <section class="card card--urgent" id="emergency-playbook">
-      <div class="section-header">
-        <span class="section-number section-number--urgent">02</span>
-        <div>
-          <h2>Emergency Playbook <span class="badge-inline badge-my">Malaysia</span></h2>
-          <p class="section-subtitle">Do these now. Every minute counts.</p>
-        </div>
-      </div>
-
-      <div class="playbook-grid">
-        <div class="playbook-column">
-          <div class="playbook-heading">
-            <span class="playbook-icon playbook-icon--stop">&#9632;</span>
-            <h3>Stop the Bleeding</h3>
+        <!-- ============================================================ -->
+        <!--  PHASE 1: HERO INPUT                                          -->
+        <!-- ============================================================ -->
+        <section id="phase-hero" class="flow-phase flow-phase--hero card" data-animate>
+          <div class="hero-badge">
+            <svg class="icon icon-lg"><use href="#icon-shield"></use></svg>
+            <span class="eyebrow">ScamShield MY</span>
           </div>
-          <ol id="playbook-stop" class="playbook-list"></ol>
-        </div>
-        <div class="playbook-column">
-          <div class="playbook-heading">
-            <span class="playbook-icon playbook-icon--evidence">&#128269;</span>
-            <h3>Collect Evidence</h3>
+          <h1 data-i18n="hero.flow.title">I think I got scammed.</h1>
+          <p class="hero-subtitle" data-i18n="hero.flow.subtitle">
+            Paste the suspicious URL, wallet address, phone number, or handle below.
+            We'll generate your complete recovery kit in seconds.
+          </p>
+
+          <form id="flow-input-form" class="flow-input-form">
+            <div class="flow-input-wrap">
+              <input id="flow-input" type="text"
+                placeholder="Paste anything: 0x... address, @handle, URL, phone number"
+                data-i18n-placeholder="flow.input.placeholder"
+                required autocomplete="off" autofocus>
+              <span id="flow-detect-badge" class="auto-detect-badge hidden"></span>
+            </div>
+            <button type="submit" id="flow-submit" class="btn btn-primary btn-lg flow-submit">
+              <span class="btn-text" data-i18n="flow.btn.check">Check Now</span>
+              <span class="btn-loader hidden">
+                <svg class="icon icon-spin"><use href="#icon-loader"></use></svg>
+                <span data-i18n="flow.btn.checking">Checking...</span>
+              </span>
+            </button>
+          </form>
+
+          <p class="hero-reassurance" data-i18n="hero.flow.reassurance">
+            Free to use. No sign-up required. Your data stays private.
+          </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!--  PHASE 2: VERDICT                                             -->
+        <!-- ============================================================ -->
+        <section id="phase-verdict" class="flow-phase flow-phase--verdict hidden">
+          <div class="card">
+            <div class="flow-phase-header">
+              <span class="flow-step-badge">RESULT</span>
+              <h2 data-i18n="flow.verdict.title">Risk Assessment</h2>
+            </div>
+
+            <div class="verdict-result-flow">
+              <div class="verdict-top">
+                <div class="verdict-badge-wrap">
+                  <span id="flow-verdict-badge" class="verdict-badge">UNKNOWN</span>
+                  <div class="verdict-score-wrap">
+                    <span class="score-label" data-i18n="verdict.result.risk_score">Risk Score</span>
+                    <div class="score-bar-track">
+                      <div id="flow-score-bar" class="score-bar" style="width:0%"></div>
+                    </div>
+                    <span id="flow-score-value" class="score-value">--</span>
+                  </div>
+                </div>
+              </div>
+              <div id="flow-reasons" class="verdict-reasons"></div>
+              <p id="flow-state-copy" class="verdict-state-copy hidden"></p>
+              <p id="flow-meta" class="meta"></p>
+            </div>
           </div>
-          <ol id="playbook-evidence" class="playbook-list"></ol>
-        </div>
-      </div>
+        </section>
 
-      <div class="playbook-report-section">
-        <div class="playbook-heading">
-          <span class="playbook-icon playbook-icon--report">&#128220;</span>
-          <h3>Where to Report</h3>
-        </div>
-        <div id="playbook-report" class="report-channels"></div>
-      </div>
+        <!-- ============================================================ -->
+        <!--  PHASE 3: RECOVERY KIT (auto-generated)                       -->
+        <!-- ============================================================ -->
+        <div id="phase-recovery-kit" class="hidden">
 
-      <div class="playbook-script-section">
-        <label class="form-label">Pre-written report starter (copy and paste)</label>
-        <div class="textarea-wrap">
-          <textarea id="playbook-script" rows="4" readonly></textarea>
-          <button id="copy-playbook-script" class="btn-copy" title="Copy to clipboard">
-            <span class="copy-icon">&#128203;</span>
-            <span class="copy-label">Copy</span>
-          </button>
-        </div>
-      </div>
+          <!-- Loading state for parallel API calls -->
+          <div id="recovery-kit-loading" class="flow-phase flow-phase--loading card">
+            <div class="kit-loading-indicator">
+              <svg class="icon icon-spin icon-lg"><use href="#icon-loader"></use></svg>
+              <p data-i18n="flow.kit.generating">Generating your personalized recovery kit...</p>
+            </div>
+            <div class="kit-loading-steps">
+              <div class="kit-step-indicator" id="kit-step-emergency">
+                <span class="kit-step-dot"></span>
+                <span data-i18n="flow.kit.step.emergency">Loading emergency actions...</span>
+              </div>
+              <div class="kit-step-indicator" id="kit-step-reports">
+                <span class="kit-step-dot"></span>
+                <span data-i18n="flow.kit.step.reports">Generating reports...</span>
+              </div>
+              <div class="kit-step-indicator" id="kit-step-warning">
+                <span class="kit-step-dot"></span>
+                <span data-i18n="flow.kit.step.warning">Creating warning card...</span>
+              </div>
+            </div>
+          </div>
 
-      <p id="legal-line" class="legal-line"></p>
-    </section>
+          <!-- STEP 1: Stop the Bleeding -->
+          <section id="phase-emergency" class="flow-phase card card--urgent hidden" data-animate>
+            <div class="flow-phase-header">
+              <span class="flow-step-badge flow-step-badge--urgent">STEP 1</span>
+              <div>
+                <h2 data-i18n="flow.emergency.title">Stop the Bleeding</h2>
+                <p class="section-subtitle" data-i18n="flow.emergency.subtitle">Do these NOW. Every minute counts.</p>
+              </div>
+            </div>
 
-    <!-- 3. Report Generator -->
-    <section class="card" id="report-generator">
-      <div class="section-header">
-        <span class="section-number">03</span>
-        <div>
-          <h2>Auto-Generate Reports</h2>
-          <p class="section-subtitle">Fill in once, get copy-ready reports for bank, police, and platform.</p>
-        </div>
-      </div>
+            <div class="emergency-actions" id="flow-emergency-actions"></div>
 
-      <form id="report-generate-form" class="report-form">
-        <div class="form-row">
-          <label class="form-field form-field--grow">
-            <span class="form-label">Incident Title</span>
-            <input name="incidentTitle" placeholder="e.g. Fake investment coach on Telegram" required>
-          </label>
-          <label class="form-field">
-            <span class="form-label">Scam Type</span>
-            <input name="scamType" placeholder="Investment / Impersonation" required>
-          </label>
-        </div>
-        <div class="form-row">
-          <label class="form-field">
-            <span class="form-label">Occurred At</span>
-            <input name="occurredAt" placeholder="2026-02-14 09:25 MYT" required>
-          </label>
-          <label class="form-field">
-            <span class="form-label">Channel</span>
-            <input name="channel" placeholder="Telegram / WhatsApp / Instagram" required>
-          </label>
-          <label class="form-field">
-            <span class="form-label">Estimated Loss</span>
-            <input name="losses" placeholder="MYR 3,500">
-          </label>
-        </div>
-        <div class="form-row">
-          <label class="form-field form-field--grow">
-            <span class="form-label">Suspect Identifiers <span class="hint">(comma separated)</span></span>
-            <input name="suspects" placeholder="@fakeadmin, 0xabc...">
-          </label>
-          <label class="form-field form-field--grow">
-            <span class="form-label">Actions Taken <span class="hint">(comma separated)</span></span>
-            <input name="actionsTaken" placeholder="Called bank, froze card">
-          </label>
-        </div>
-        <label class="form-field form-field--full">
-          <span class="form-label">Extra Notes <span class="hint">(optional)</span></span>
-          <input name="extraNotes" placeholder="Any additional context about the incident">
-        </label>
-        <button type="submit" class="btn btn-primary btn-lg">Generate Templates</button>
-      </form>
+            <div class="emergency-channels">
+              <h3 data-i18n="flow.emergency.report_to">Report To:</h3>
+              <div id="flow-report-channels" class="report-channels"></div>
+            </div>
+          </section>
 
-      <div id="report-output" class="report-output hidden">
-        <div id="report-severity-badge" class="report-severity"></div>
+          <!-- STEP 2: Ready-to-Send Reports -->
+          <section id="phase-reports" class="flow-phase card hidden" data-animate>
+            <div class="flow-phase-header">
+              <span class="flow-step-badge">STEP 2</span>
+              <div>
+                <h2 data-i18n="flow.reports.title">Your Reports (Ready to Send)</h2>
+                <p class="section-subtitle" data-i18n="flow.reports.subtitle">
+                  Auto-generated from your scan. Copy and send.
+                </p>
+              </div>
+            </div>
 
-        <div class="report-tabs">
-          <button class="tab-btn active" data-tab="bank">For Bank</button>
-          <button class="tab-btn" data-tab="police">For Police</button>
-          <button class="tab-btn" data-tab="platform">For Platform</button>
-        </div>
+            <div id="flow-report-severity" class="report-severity"></div>
 
-        <div class="report-tab-content">
-          <div class="tab-panel active" data-panel="bank">
-            <div class="textarea-wrap">
-              <textarea id="report-bank" rows="12" readonly></textarea>
-              <button class="btn-copy" data-copy="report-bank" title="Copy bank report">
-                <span class="copy-icon">&#128203;</span>
-                <span class="copy-label">Copy</span>
+            <div class="report-tabs" id="flow-report-tabs">
+              <button class="tab-btn active" data-tab="flow-bank" data-i18n="report.tab.bank">For Bank</button>
+              <button class="tab-btn" data-tab="flow-police" data-i18n="report.tab.police">For Police</button>
+              <button class="tab-btn" data-tab="flow-platform" data-i18n="report.tab.platform">For Platform</button>
+            </div>
+
+            <div class="report-tab-content">
+              <div class="tab-panel active" data-panel="flow-bank">
+                <div class="textarea-wrap">
+                  <textarea id="flow-report-bank" rows="10" readonly></textarea>
+                  <button class="btn-copy" data-copy="flow-report-bank" title="Copy bank report">
+                    <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                    <span class="copy-label">Copy</span>
+                  </button>
+                </div>
+              </div>
+              <div class="tab-panel" data-panel="flow-police">
+                <div class="textarea-wrap">
+                  <textarea id="flow-report-police" rows="10" readonly></textarea>
+                  <button class="btn-copy" data-copy="flow-report-police" title="Copy police report">
+                    <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                    <span class="copy-label">Copy</span>
+                  </button>
+                </div>
+              </div>
+              <div class="tab-panel" data-panel="flow-platform">
+                <div class="textarea-wrap">
+                  <textarea id="flow-report-platform" rows="10" readonly></textarea>
+                  <button class="btn-copy" data-copy="flow-report-platform" title="Copy platform report">
+                    <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                    <span class="copy-label">Copy</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flow-edit-hint">
+              <label class="form-field">
+                <span class="form-label" data-i18n="flow.reports.edit_loss">Estimated Loss (edit if known):</span>
+                <input id="flow-loss-input" type="text" placeholder="e.g. MYR 3,500" value="Unknown">
+              </label>
+              <button id="flow-regenerate-reports" class="btn btn-sm">
+                <svg class="icon"><use href="#icon-refresh"></use></svg>
+                <span data-i18n="flow.reports.regenerate">Update Reports</span>
               </button>
             </div>
-          </div>
-          <div class="tab-panel" data-panel="police">
-            <div class="textarea-wrap">
-              <textarea id="report-police" rows="12" readonly></textarea>
-              <button class="btn-copy" data-copy="report-police" title="Copy police report">
-                <span class="copy-icon">&#128203;</span>
-                <span class="copy-label">Copy</span>
-              </button>
+          </section>
+
+          <!-- STEP 3: Recovery Checklist -->
+          <section id="phase-checklist" class="flow-phase card hidden" data-animate>
+            <div class="flow-phase-header">
+              <span class="flow-step-badge">STEP 3</span>
+              <div>
+                <h2 data-i18n="flow.checklist.title">Recovery Progress</h2>
+                <p class="section-subtitle" data-i18n="flow.checklist.subtitle">Track your containment. Each action reduces exposure.</p>
+              </div>
+            </div>
+
+            <div class="progress-section">
+              <div class="progress-header">
+                <span id="flow-progress-label" class="progress-label">0% contained</span>
+                <span id="flow-progress-count" class="progress-count">0 / 0 actions</span>
+              </div>
+              <div class="progress-track">
+                <div id="flow-progress-bar" class="progress-bar"></div>
+              </div>
+            </div>
+
+            <ul id="flow-task-list" class="task-list"></ul>
+          </section>
+
+          <!-- STEP 4: Protect Others -->
+          <section id="phase-share" class="flow-phase card hidden" data-animate>
+            <div class="flow-phase-header">
+              <span class="flow-step-badge">STEP 4</span>
+              <div>
+                <h2 data-i18n="flow.share.title">Protect Others</h2>
+                <p class="section-subtitle" data-i18n="flow.share.subtitle">Share a warning to stop the scam from spreading.</p>
+              </div>
+            </div>
+
+            <div id="flow-warning-output" class="warning-output">
+              <div class="warning-actions">
+                <div class="warning-link-group">
+                  <span class="form-label" data-i18n="warning.label.page">Warning Page</span>
+                  <div class="link-copy-row">
+                    <a id="flow-warning-link" href="#" target="_blank" rel="noopener noreferrer" class="warning-url"></a>
+                    <button id="flow-copy-warning" class="btn-copy btn-copy--inline" title="Copy link">
+                      <svg class="icon"><use href="#icon-clipboard"></use></svg>
+                      <span class="copy-label">Copy</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flow-share-buttons">
+                  <button id="flow-share-whatsapp" class="btn btn-sm flow-share-btn flow-share-btn--wa">
+                    Share on WhatsApp
+                  </button>
+                  <button id="flow-share-telegram" class="btn btn-sm flow-share-btn flow-share-btn--tg">
+                    Share on Telegram
+                  </button>
+                  <button id="flow-share-native" class="btn btn-sm">
+                    <svg class="icon"><use href="#icon-share"></use></svg> Share
+                  </button>
+                </div>
+              </div>
+              <div id="flow-warning-preview-shell" class="warning-preview-shell">
+                <div class="warning-preview-header">
+                  <span class="warning-preview-tag" data-i18n="warning.preview.tag">Community Alert Bulletin</span>
+                  <span id="flow-warning-status" class="warning-preview-status">UNKNOWN</span>
+                </div>
+                <img id="flow-warning-preview" alt="Warning card preview" class="warning-preview">
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============================================================ -->
+        <!--  PHASE 4: LEGIT RESULT (alternate path)                       -->
+        <!-- ============================================================ -->
+        <section id="phase-legit" class="flow-phase flow-phase--legit card hidden" data-animate>
+          <div class="flow-phase-header">
+            <span class="flow-step-badge flow-step-badge--legit">ALL CLEAR</span>
+            <div>
+              <h2 data-i18n="flow.legit.title">No High-Risk Signals Detected</h2>
+              <p class="section-subtitle" data-i18n="flow.legit.subtitle">
+                This doesn't guarantee safety. Always verify through official channels.
+              </p>
             </div>
           </div>
-          <div class="tab-panel" data-panel="platform">
-            <div class="textarea-wrap">
-              <textarea id="report-platform" rows="12" readonly></textarea>
-              <button class="btn-copy" data-copy="report-platform" title="Copy platform report">
-                <span class="copy-icon">&#128203;</span>
-                <span class="copy-label">Copy</span>
+          <div class="legit-actions">
+            <div class="legit-tip-card">
+              <h3 data-i18n="flow.legit.verify">Stay Safe</h3>
+              <ul id="flow-legit-tips" class="legit-tips-list">
+                <li data-i18n="flow.legit.tip1">Cross-check the address/handle on official platforms</li>
+                <li data-i18n="flow.legit.tip2">Never send money based on one message alone</li>
+                <li data-i18n="flow.legit.tip3">If it feels off, trust your instinct and wait</li>
+              </ul>
+            </div>
+            <button id="flow-check-another" class="btn btn-primary btn-lg" data-i18n="flow.legit.check_another">
+              Check Another
+            </button>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!--  PHASE 5: FOOTER ACTIONS                                      -->
+        <!-- ============================================================ -->
+        <section id="phase-footer-actions" class="flow-phase flow-phase--footer-actions hidden">
+          <div class="flow-more-help">
+            <h3 data-i18n="flow.footer.more_help">Need more help?</h3>
+            <div class="flow-secondary-links">
+              <button id="flow-open-ai" class="btn btn-sm">
+                <svg class="icon"><use href="#icon-sparkles"></use></svg>
+                <span data-i18n="flow.footer.ai">AI Assistant</span>
               </button>
+              <a href="/dashboard" class="btn btn-sm">
+                <svg class="icon"><use href="#icon-bar-chart-2"></use></svg>
+                <span data-i18n="flow.footer.dashboard">Dashboard</span>
+              </a>
+              <a href="/reports" class="btn btn-sm">
+                <svg class="icon"><use href="#icon-file-text"></use></svg>
+                <span data-i18n="flow.footer.reports">Reports</span>
+              </a>
             </div>
           </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+          <p class="legal-line" data-i18n="footer.legal">ScamShield MY does not promise fund recovery. We provide fast
+            containment and reporting pathways.</p>
+          <p class="footer-sub" data-i18n="footer.sub">Built for Malaysian scam victims. Open-source community tool.</p>
+        </footer>
+      </main>
+    </div> <!-- /.parallax-layer -->
+  </div> <!-- /.parallax-wrapper -->
+
+  <!-- AI Chat Drawer (floating, not a mode) -->
+  <div id="ai-chat-drawer" class="ai-drawer hidden">
+    <div class="ai-drawer-header">
+      <h3>AI Assistant</h3>
+      <button id="ai-drawer-close" class="ai-drawer-close">&times;</button>
+    </div>
+    <div id="ai-chat-messages" class="ai-chat-messages">
+      <div class="ai-msg ai-msg--assistant">
+        <div class="ai-msg-avatar">
+          <svg class="icon"><use href="#icon-shield"></use></svg>
         </div>
-
-        <p id="report-meta" class="meta"></p>
-      </div>
-    </section>
-
-    <!-- 4. Recovery Checklist -->
-    <section class="card" id="recovery-checklist">
-      <div class="section-header">
-        <span class="section-number">04</span>
-        <div>
-          <h2>Damage Control Checklist</h2>
-          <p class="section-subtitle">Track your containment progress. Each action reduces your exposure.</p>
-        </div>
-      </div>
-
-      <div class="progress-section">
-        <div class="progress-header">
-          <span id="recovery-progress-label" class="progress-label">0% contained</span>
-          <span id="recovery-progress-count" class="progress-count">0 / 0 actions</span>
-        </div>
-        <div class="progress-track">
-          <div id="recovery-progress-bar" class="progress-bar"></div>
-        </div>
-      </div>
-
-      <ul id="recovery-task-list" class="task-list"></ul>
-    </section>
-
-    <!-- 5. Warning Card -->
-    <section class="card" id="warning-card">
-      <div class="section-header">
-        <span class="section-number">05</span>
-        <div>
-          <h2>Containment: Warning Card</h2>
-          <p class="section-subtitle">Generate a shareable warning to protect others in your network.</p>
+        <div class="ai-msg-bubble">
+          <p><strong data-i18n="ai.greeting.title">I'm your ScamShield AI assistant.</strong></p>
+          <p data-i18n="ai.greeting.body">Tell me what happened — what type of scam, when it occurred, and what
+            you've done so far. I'll guide you through the fastest containment steps.</p>
+          <p class="ai-msg-hint" data-i18n="ai.greeting.hint">You can write in English or Bahasa Melayu.</p>
         </div>
       </div>
+    </div>
+    <form id="ai-chat-form" class="ai-chat-input-row">
+      <textarea id="ai-chat-input" class="ai-chat-input"
+        placeholder="Describe your situation..."
+        data-i18n-placeholder="ai.input.placeholder" rows="2"></textarea>
+      <button type="submit" id="ai-chat-send" class="btn btn-primary ai-chat-send">
+        <span class="btn-text" data-i18n="ai.btn.send">Send</span>
+        <span class="btn-loader hidden">
+          <svg class="icon icon-spin"><use href="#icon-loader"></use></svg>
+        </span>
+      </button>
+    </form>
+  </div>
 
-      <form id="warning-form" class="warning-form">
-        <div class="form-row">
-          <label class="form-field">
-            <span class="form-label">Verdict</span>
-            <select name="verdict">
-              <option value="HIGH_RISK">HIGH RISK</option>
-              <option value="UNKNOWN">UNKNOWN</option>
-              <option value="LEGIT">LEGIT</option>
-            </select>
-          </label>
-          <label class="form-field form-field--grow">
-            <span class="form-label">Headline</span>
-            <input name="headline" placeholder="Potential scam campaign detected" required>
-          </label>
-        </div>
-        <div class="form-row">
-          <label class="form-field form-field--grow">
-            <span class="form-label">Primary Identifier</span>
-            <input name="identifier" placeholder="0x... or @handle" required>
-          </label>
-          <label class="form-field form-field--grow">
-            <span class="form-label">Evidence bullets <span class="hint">(separate with |)</span></span>
-            <input name="reasons" placeholder="Canonical mismatch | Honeypot risk | 4 community reports">
-          </label>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg">Generate Warning Card</button>
-      </form>
+  <!-- Floating AI trigger button -->
+  <button id="ai-fab" class="ai-fab hidden">
+    <svg class="icon"><use href="#icon-sparkles"></use></svg>
+    <span class="ai-fab-label">AI Help</span>
+  </button>
 
-      <div id="warning-output" class="warning-output hidden">
-        <div class="warning-actions">
-          <div class="warning-link-group">
-            <span class="form-label">Warning Page</span>
-            <div class="link-copy-row">
-              <a id="warning-page-link" href="#" target="_blank" rel="noopener noreferrer" class="warning-url"></a>
-              <button id="copy-warning-url" class="btn-copy btn-copy--inline" title="Copy warning page link">
-                <span class="copy-icon">&#128203;</span>
-                <span class="copy-label">Copy</span>
-              </button>
-            </div>
-          </div>
-          <div class="warning-action-row">
-            <a id="open-warning-page" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Open Page</a>
-            <a id="open-warning-image" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Open Image</a>
-            <button id="share-warning" class="btn btn-sm" type="button">Share</button>
-          </div>
-        </div>
-        <div id="warning-preview-shell" class="warning-preview-shell">
-          <div class="warning-preview-header">
-            <span class="warning-preview-tag">Community Alert Bulletin</span>
-            <span id="warning-preview-status" class="warning-preview-status">UNKNOWN</span>
-          </div>
-          <img id="warning-preview" alt="Warning card preview" class="warning-preview">
-          <p class="warning-preview-note">Forward responsibly: include only scam-relevant identifiers and evidence.</p>
-        </div>
-        <p id="warning-meta" class="meta"></p>
-      </div>
-    </section>
-
-    <!-- 6. Heatmap -->
-    <section class="card" id="heatmap">
-      <div class="section-header">
-        <span class="section-number">06</span>
-        <div>
-          <h2>Scam Heatmap</h2>
-          <p class="section-subtitle">Live view: which platforms and scam types are trending in Malaysia.</p>
-        </div>
-      </div>
-
-      <div class="heatmap-wrap">
-        <table class="heatmap-table">
-          <thead>
-            <tr>
-              <th>Platform</th>
-              <th>Category</th>
-              <th class="th-count">Reports (7d)</th>
-              <th class="th-trend">Trend</th>
-            </tr>
-          </thead>
-          <tbody id="heatmap-body"></tbody>
-        </table>
-      </div>
-      <button id="refresh-heatmap" class="btn btn-sm">Refresh Heatmap</button>
-    </section>
-
-    </div><!-- /manual-mode -->
-
-    <!-- Footer -->
-    <footer class="footer">
-      <p class="legal-line">ScamShield MY does not promise fund recovery. We provide fast containment and reporting pathways.</p>
-      <p class="footer-sub">Built for Malaysian scam victims. Open-source community tool.</p>
-    </footer>
-  </main>
+  <!-- SVG Sprite Sheet -->
+  <svg style="display: none;">
+    <defs>
+      <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M12 8v4" />
+        <path d="M12 16h.01" />
+      </symbol>
+      <symbol id="icon-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+        <path d="M20 3v4" />
+        <path d="M22 5h-4" />
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </symbol>
+      <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </symbol>
+      <symbol id="icon-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      </symbol>
+      <symbol id="icon-check-verified" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6L9 17l-5-5" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </symbol>
+      <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </symbol>
+      <symbol id="icon-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10" />
+        <polyline points="1 20 1 14 7 14" />
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+      </symbol>
+      <symbol id="icon-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+      </symbol>
+      <symbol id="icon-bar-chart-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+      </symbol>
+      <symbol id="icon-octagon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+      </symbol>
+      <symbol id="icon-loader" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="2" x2="12" y2="6" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+        <line x1="2" y1="12" x2="6" y2="12" />
+        <line x1="18" y1="12" x2="22" y2="12" />
+        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+      </symbol>
+      <symbol id="icon-trend-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+      </symbol>
+      <symbol id="icon-trend-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+        <polyline points="17 18 23 18 23 12" />
+      </symbol>
+      <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9" />
+      </symbol>
+      <symbol id="icon-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+        <line x1="9" y1="9" x2="15" y2="15" />
+      </symbol>
+    </defs>
+  </svg>
 
   <script type="module" src="/app.js"></script>
 </body>
+
 </html>

@@ -1,6 +1,6 @@
 # ScamShield MY - Execution Tracker (Cure-First)
 
-Last updated: 2026-02-14 (Google Auth + Tiered Quotas + Multi-Mode Dashboards)
+Last updated: 2026-02-14 (Localization + Multi-Mode Dashboards + Icon System)
 
 ## Mission
 Build ScamShield MY as a Scam Response Kit first, detection second.
@@ -13,8 +13,9 @@ Product promise:
   - Free (Unauthenticated): 3 uses per day per IP.
   - Login (Beta User): 30 uses per day.
 - **Dashboards**:
-  - Client: Usage quota, personal incident history, recovery progress (Unified in /dashboard).
-  - Admin: Global heatmap, user usage stats, system health (Unified in /reports + /dashboard).
+  - Client: Usage quota, personal incident history, recovery progress ([dashboard-client.html](file:///d:/Personal/Krackathon%20Q1%202026/public/dashboard-client.html)).
+  - Admin: Global heatmap, user usage stats, system health ([dashboard-admin.html](file:///d:/Personal/Krackathon%20Q1%202026/public/dashboard-admin.html)).
+- **Localization**: Full support for Bahasa Melayu (BM) and English (EN) to assist victims in high-stress situations.
 - Cure layer must remain useful even when detection providers fail.
 - Verdict response must always return a useful result (`LEGIT | HIGH_RISK | UNKNOWN`) with exactly 3 reason bullets.
 - Every verdict state must provide next actions.
@@ -34,8 +35,9 @@ Product promise:
 - DONE: Public warning page route (`/w/:slug`) and warning-card generation pipeline.
 - DONE: AI Agent interface for conversational scam assistance.
 - DONE: Usage tier enforcement (3 free / 30 login) with KV + D1 tracking.
-- DONE: Server-rendered Dashboard (Global telemetry + KPI).
-- DONE: Server-rendered Reports list (Audit stream).
+- DONE: Unified Multi-Mode Dashboards (Client & Admin views).
+- DONE: Premium SVG Icon System replacement (Cohesive branding).
+- DONE: Localization Layer (Bahasa Melayu & English toggle).
 
 ### Platform architecture
 - DONE: Worker routes, D1 schema/migration, KV/R2/Queue/Cron bindings.
@@ -66,108 +68,73 @@ Product promise:
 ### Non-negotiable UX outputs
 - One-screen verdict: DONE
   - API: `src/index.ts` (`POST /api/verdict`)
-  - Scoring/reasons: `src/core/scoring.ts`
-  - UI: `public/index.html`, `public/app.js`
+  - UI: [index.html](file:///d:/Personal/Krackathon%20Q1%202026/public/index.html), [app.js](file:///d:/Personal/Krackathon%20Q1%202026/public/app.js)
 - Shareable warning card + public page: DONE (True PNG rasterization via Browser Rendering API)
-  - Routes: `src/index.ts` (`POST /api/warning-card`, `GET /w/:slug`)
-  - Storage: `src/core/warningCard.ts` (PNG + SVG dual mode)
 - Heatmap (platform x category + trend): DONE
-  - Data: `src/db/repository.ts` (`getHeatmapGrid`, `rollupHeatmap`)
-  - Route/UI: `src/index.ts` + `public/app.js`
+- Unified Dashboards: DONE
+  - Client: [dashboard-client.html](file:///d:/Personal/Krackathon%20Q1%202026/public/dashboard-client.html)
+  - Admin: [dashboard-admin.html](file:///d:/Personal/Krackathon%20Q1%202026/public/dashboard-admin.html)
+  - Logic: [dashboard.js](file:///d:/Personal/Krackathon%20Q1%202026/public/dashboard.js)
+- Localization: DONE ([locales.js](file:///d:/Personal/Krackathon%20Q1%202026/public/locales.js))
 
 ### Cure layer MVP requirements
-- Emergency Playbook (MY): DONE (`src/core/playbook.ts`, `GET /api/playbook`)
-- Auto-generate reports: DONE (`src/core/reportGenerator.ts`, `POST /api/report/generate`)
-- Damage control checklist + progress: DONE (`src/core/playbook.ts`, `POST /api/recovery-progress`)
+- Emergency Playbook (MY): DONE
+- Auto-generate reports: DONE
+- Damage control checklist + progress: DONE
 - Containment via warning pages/cards: DONE
 
 ### Defensive reliability rules
-- Provider timeouts + `Promise.allSettled`: DONE (`src/providers/index.ts`)
-- Degraded mode returns useful output: DONE (`src/core/verdictService.ts`)
-- Live-mode <2s SLO enforced: DONE (1800ms budget)
-- Queue dead-letter properly tracked: DONE (`msg.attempts` in `src/index.ts`)
-- Per-IP/session rate limit in KV: DONE (`src/core/rateLimit.ts`)
-- Input validation and safe error messages: DONE (Zod schemas)
-- CORS headers: DONE
-- D1 cache staleness check: DONE
+- Provider timeouts + `Promise.allSettled`: DONE
+- Degraded mode returns useful output: DONE
+- Live-mode <2s SLO enforced: DONE
+- Queue dead-letter properly tracked: DONE
+- Per-IP/session rate limit in KV: DONE
 - Deep PII masking (nested objects/arrays): DONE
 - SQL LIKE wildcard escape: DONE
-- Shared nextActions helper: DONE
-- Reasons padding: DONE
-- Tests: 155 tests across 13 files — all pass
+- Tests: 155 tests passing
 
-## Agent Task Board
+## Orchestration Board
 
-## Agent 1 -> Rapid Scaffolding (Architecture + Boilerplate)
-Status: DONE
+### Track 01: Infrastructure & Auth (Platform Foundation)
+**Status**: ACTIVE | **Primary Agent**: Agent 1 & 7
+- DONE: Worker app scaffolded with route structure and D1/KV/R2/Queue/Cron bindings.
+- DONE: Production resource IDs locked in `wrangler.toml`.
+- DONE: Auth Layer: Google OAuth 2.0 + JWT session management.
+- DONE: D1 Schema: Robust `users`, `usage_logs`, and rollup tables.
+- DONE: Secure routing for unified Dashboard access.
 
-Completed:
-- Worker app scaffolded with route structure.
-- `wrangler.toml` bindings set for D1/KV/R2/Queue/Cron.
-- D1 migration includes required base tables plus daily rollup table.
-- Core frontend pages/sections are implemented.
-- **Production resource IDs provided in `wrangler.toml`.**
-- **Google OAuth flow and JWT session management implemented.**
+### Track 02: Logic & Scaling (Verdict Engine)
+**Status**: STABLE | **Primary Agent**: Agent 2 & 4
+- DONE: Multi-Provider Client Layer (CoinGecko, GoPlus, Honeypot, etc.).
+- DONE: Normalization engine and risk threshold scoring logic.
+- DONE: Live-mode <2s SLO (1800ms budget) with `Promise.allSettled`.
+- DONE: Usage Quota Enforcement (Free 3 / Login 30) via KV + D1.
+- DONE: Full Test Suite: 155 unit/integration tests passing (`npm run test`).
 
-Remaining:
-- None.
+### Track 03: Visuals & Experience (Digital Frontier)
+**Status**: POLISHED | **Primary Agent**: Agent 3 & 5
+- DONE: Cyber-Security Aesthetic: Parallax, ASCII Art, and Motion Design.
+- DONE: Single-Page Verdict Flow with judge-friendly UI.
+- DONE: Premium SVG Icon System (Full coherence replacement).
+- DONE: Mobile-First responsiveness and interaction feedback.
+- DONE: Accessibility: `prefers-reduced-motion` support.
 
-## Agent 2 -> Refactor + Optimize Logic
-Status: DONE
-
-Completed:
-- Live provider client layer exists (CoinGecko/GoPlus/Honeypot/Chainabuse/CryptoScamDB).
-- Normalization and verdict threshold logic implemented.
-- KV + D1 cache layering implemented.
-- Queue pipeline and scheduled heatmap rollup implemented.
-- Live-mode <2s SLO enforced (1800ms provider budget).
-- **True PNG rasterization for warning cards (Browser Rendering API).**
-- **Usage quota tracking and enforcement (Free vs Login).**
-
-Remaining:
-- Improve provider-specific 429 handling/backoff strategy.
-
-## Agent 3 -> UX Polish + Copywriting
-Status: DONE
-
-Completed:
-- Branded, judge-friendly single-page flow.
-- Strong CTA mapping from verdict to Cure actions.
-- Copy buttons, tabbed report output, visual heatmap treatment.
-- Malaysia-focused emergency instructions and legal-safe tone.
-- **Final pass on "official enough" warning-card visual.**
-- **Mobile QA checklist and spacing tweaks for small screens.**
-- **Tightened unknown-state copy for better clarity.**
-- **Auth UI components and quota visualization.**
-
-Remaining:
-- None.
-
-## Agent 4 -> Edge Cases + Error Handling + Testing
-Status: DONE
-
-Completed:
-- Unit tests: normalization, scoring, reason selection.
-- Integration tests: provider timeouts, warning-card, heatmap.
-- Validation tests: chain support, malformed inputs.
-- Rate limiting tests: per-IP enforcement.
-- Queue consumer tests: success, retry, dead-letter.
-- Logger deep masking tests: nested objects, arrays.
-- All 155 tests pass via `npm run test`.
-
-Remaining:
-- None.
+### Track 04: Operational Readiness (Cure Layer & Global)
+**Status**: DEPLOYED | **Primary Agent**: Agent 6
+- DONE: Localization: Dual-language (EN/BM) support across all UI strings.
+- DONE: Warning Card Pipeline: SVG + PNG rasterization via Browser Rendering API.
+- DONE: Cure Layer: Emergency Playbook, Report Generation, and Recovery Checklist.
+- DONE: Heatmap Engine: Global telemetry + KPI rollups.
+- DONE: Logger: Deep PII masking for production safety.
 
 ## Immediate Next Sprint (Scaling + Monitoring)
 1. Deploy final build to production and run smoke tests.
-2. Expand Malaysia-specific playbook content with direct links to BNM/PDRM portals.
-3. Implement localized Bahasa Melayu translation toggle for high-stress situations.
-4. Configure Cloudflare Observability alerts for provider timeout spikes (>10% per min).
+2. Implement PDF export for generated reports (Legal-friendly formatting).
+3. Expand warning card customization (Add scammer screenshot/proof upload).
+4. Configure Cloudflare Observability alerts for provider timeout spikes.
 
 ## Definition of Done Gates (Enforced)
-- Verdict API returns in under 2 seconds for cached/degraded path.
-- UI still works when external providers fail.
-- Warning page + share card link open correctly on mobile.
-- Heatmap shows non-zero data and trend arrows.
-- Playbook and reports are copyable in one tap.
+- Verdict API returns in under 2 seconds.
+- UI supports EN/BM seamlessly.
+- Dashboard stats reflect real-time D1/KV data.
 - Unit + integration tests exist and pass.

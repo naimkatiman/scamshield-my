@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Dashboard — ScamShield MY</title>
+    <meta name="description"
+        content="Your personal ScamShield MY dashboard. Track usage, view history, and manage your account.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+    <div class="bg-shape bg-shape-c"></div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <main class="container">
+        <!-- Top Nav -->
+        <nav class="dash-nav">
+            <a href="/app" class="dash-nav-back">&#x2190; Back to App</a>
+            <span class="dash-nav-title">&#x1F6E1; My Dashboard</span>
+            <a href="/api/auth/logout" class="btn btn-sm btn-auth btn-auth--logout">Sign out</a>
+        </nav>
+
+        <!-- Loading State -->
+        <div id="dash-loading" class="dash-loading">
+            <div class="dash-spinner"></div>
+            <p>Loading your dashboard...</p>
+        </div>
+
+        <!-- Auth Required State -->
+        <div id="dash-auth-required" class="card dash-auth-required hidden">
+            <h2>Authentication Required</h2>
+            <p>Sign in with Google to access your personal dashboard.</p>
+            <a href="/api/auth/login" class="btn btn-primary btn-lg">&#x1F512; Sign in with Google</a>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dash-content" class="hidden">
+            <!-- Account Card -->
+            <section class="card dash-account-card">
+                <div class="dash-account-header">
+                    <div class="dash-avatar" id="dash-avatar">?</div>
+                    <div class="dash-account-info">
+                        <h2 id="dash-email" class="dash-email">—</h2>
+                        <span id="dash-role" class="dash-role-badge">user</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quota Card -->
+            <section class="card dash-quota-card">
+                <div class="section-header">
+                    <span class="section-number">01</span>
+                    <div>
+                        <h2>Today's Usage</h2>
+                        <p class="section-subtitle" id="dash-quota-day">—</p>
+                    </div>
+                </div>
+
+                <div class="dash-quota-gauge-wrap">
+                    <div class="dash-quota-gauge">
+                        <svg viewBox="0 0 120 120" class="dash-gauge-svg">
+                            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border-light)" stroke-width="10" />
+                            <circle id="dash-gauge-arc" cx="60" cy="60" r="52" fill="none" stroke="var(--verdict-safe)"
+                                stroke-width="10" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="327"
+                                transform="rotate(-90 60 60)" />
+                        </svg>
+                        <div class="dash-gauge-label">
+                            <span id="dash-gauge-remaining" class="dash-gauge-number">—</span>
+                            <span class="dash-gauge-unit">remaining</span>
+                        </div>
+                    </div>
+                    <div class="dash-quota-stats">
+                        <div class="dash-stat">
+                            <span class="dash-stat-value" id="dash-stat-used">0</span>
+                            <span class="dash-stat-label">Used</span>
+                        </div>
+                        <div class="dash-stat">
+                            <span class="dash-stat-value" id="dash-stat-limit">0</span>
+                            <span class="dash-stat-label">Daily Limit</span>
+                        </div>
+                        <div class="dash-stat">
+                            <span class="dash-stat-value" id="dash-stat-remaining">0</span>
+                            <span class="dash-stat-label">Remaining</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Card -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">02</span>
+                    <div>
+                        <h2>Recent Activity</h2>
+                        <p class="section-subtitle">Your last 30 actions</p>
+                    </div>
+                </div>
+
+                <div id="dash-history-empty" class="dash-empty hidden">
+                    <p>No activity yet. Start using ScamShield to see your history here.</p>
+                </div>
+
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table" id="dash-history-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-history-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/dashboard.js"></script>
+</body>
+
+</html>

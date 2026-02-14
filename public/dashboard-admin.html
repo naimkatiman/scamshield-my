@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Dashboard — ScamShield MY</title>
+    <meta name="description" content="ScamShield MY admin panel. Monitor global usage, user activity, and scam trends.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+    <div class="bg-shape bg-shape-c"></div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <main class="container">
+        <!-- Top Nav -->
+        <nav class="dash-nav">
+            <a href="/app" class="dash-nav-back">&#x2190; Back to App</a>
+            <span class="dash-nav-title">&#x1F6E1; Admin Control Center</span>
+            <a href="/api/auth/logout" class="btn btn-sm btn-auth btn-auth--logout">Sign out</a>
+        </nav>
+
+        <!-- Loading State -->
+        <div id="dash-loading" class="dash-loading">
+            <div class="dash-spinner"></div>
+            <p>Loading admin dashboard...</p>
+        </div>
+
+        <!-- Access Denied -->
+        <div id="dash-denied" class="card dash-auth-required hidden">
+            <h2>&#x1F6AB; Access Denied</h2>
+            <p>Admin privileges are required to view this dashboard.</p>
+            <a href="/app" class="btn btn-primary">Return to App</a>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dash-content" class="hidden">
+            <!-- Stats Row -->
+            <div class="dash-stats-row">
+                <div class="card dash-stat-card">
+                    <span class="dash-stat-card-icon">&#x1F465;</span>
+                    <div>
+                        <span class="dash-stat-card-value" id="admin-total-users">0</span>
+                        <span class="dash-stat-card-label">Total Users</span>
+                    </div>
+                </div>
+                <div class="card dash-stat-card">
+                    <span class="dash-stat-card-icon">&#x1F4CA;</span>
+                    <div>
+                        <span class="dash-stat-card-value" id="admin-today-usage">0</span>
+                        <span class="dash-stat-card-label">Today's Requests</span>
+                    </div>
+                </div>
+                <div class="card dash-stat-card">
+                    <span class="dash-stat-card-icon">&#x1F6A8;</span>
+                    <div>
+                        <span class="dash-stat-card-value" id="admin-total-verdicts">0</span>
+                        <span class="dash-stat-card-label">Cached Verdicts</span>
+                    </div>
+                </div>
+                <div class="card dash-stat-card">
+                    <span class="dash-stat-card-icon">&#x1F4DD;</span>
+                    <div>
+                        <span class="dash-stat-card-value" id="admin-total-reports">0</span>
+                        <span class="dash-stat-card-label">Community Reports</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Users -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">01</span>
+                    <div>
+                        <h2>Top Users Today</h2>
+                        <p class="section-subtitle" id="admin-day-label">—</p>
+                    </div>
+                </div>
+
+                <div id="admin-top-empty" class="dash-empty hidden">
+                    <p>No usage recorded today yet.</p>
+                </div>
+
+                <div class="dash-history-wrap">
+                    <table class="dash-history-table" id="admin-top-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Email</th>
+                                <th class="th-count">Requests</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-top-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Scam Stats -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">02</span>
+                    <div>
+                        <h2>Scam Intelligence</h2>
+                        <p class="section-subtitle">Global detection and reporting stats</p>
+                    </div>
+                </div>
+
+                <div class="dash-stats-row dash-stats-row--compact">
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-high-risk">0</span>
+                        <span class="dash-mini-stat-label">Open Reports</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-cached">0</span>
+                        <span class="dash-mini-stat-label">Verdict Cache</span>
+                    </div>
+                    <div class="dash-mini-stat">
+                        <span class="dash-mini-stat-value" id="admin-warnings">0</span>
+                        <span class="dash-mini-stat-label">Warning Pages</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Heatmap -->
+            <section class="card">
+                <div class="section-header">
+                    <span class="section-number">03</span>
+                    <div>
+                        <h2>Scam Heatmap</h2>
+                        <p class="section-subtitle">Platform × category trends (7-day window)</p>
+                    </div>
+                </div>
+
+                <div class="heatmap-wrap">
+                    <table class="heatmap-table">
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Category</th>
+                                <th class="th-count">Reports</th>
+                                <th class="th-trend">Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-heatmap-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/dashboard.js"></script>
+</body>
+
+</html>

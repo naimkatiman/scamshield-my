@@ -4,7 +4,7 @@ export const KILLER_PITCH_LINE =
 export const emergencyPlaybook = {
   stopBleeding: [
     "Call your bank's fraud hotline now. Request an immediate freeze on outgoing transfers. Ask for a case reference number.",
-    "Call NSRC at 997 (National Scam Response Centre, BNM). They coordinate inter-bank freezes across Malaysian banks.",
+    "Call NSRC at 997 (National Scam Response Centre). Operates 8am-8pm daily. They coordinate immediate inter-bank freezes.",
     "Call your telco. Disable SIM swap, reset PIN/PUK, require in-person verification for changes.",
     "Reset your email password first. Then rotate all linked bank, eWallet, and social media passwords. Enable app-based 2FA everywhere.",
   ],
