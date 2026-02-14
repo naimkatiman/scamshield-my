@@ -621,9 +621,218 @@ function initSmoothScroll() {
   });
 }
 
+/* ── Mode Switcher ── */
+
+function initModeSwitcher() {
+  const aiBtn = $("mode-ai");
+  const manualBtn = $("mode-manual");
+  const aiPanel = $("ai-mode");
+  const manualPanel = $("manual-mode");
+
+  if (!aiBtn || !manualBtn || !aiPanel || !manualPanel) return;
+
+  function setMode(mode) {
+    if (mode === "ai") {
+      aiBtn.classList.add("mode-btn--active");
+      manualBtn.classList.remove("mode-btn--active");
+      aiPanel.classList.remove("hidden");
+      manualPanel.classList.add("hidden");
+    } else {
+      manualBtn.classList.add("mode-btn--active");
+      aiBtn.classList.remove("mode-btn--active");
+      manualPanel.classList.remove("hidden");
+      aiPanel.classList.add("hidden");
+    }
+    localStorage.setItem("scamshield-mode", mode);
+  }
+
+  aiBtn.addEventListener("click", () => setMode("ai"));
+  manualBtn.addEventListener("click", () => setMode("manual"));
+
+  // Restore saved mode
+  const saved = localStorage.getItem("scamshield-mode");
+  if (saved === "manual") setMode("manual");
+}
+
+/* ── AI Chat ── */
+
+const aiState = {
+  messages: [],
+  streaming: false,
+};
+
+function simpleMarkdown(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
+    .replace(/^### (.+)$/gm, '<h4 class="ai-md-h3">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 class="ai-md-h2">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 class="ai-md-h1">$1</h2>')
+    .replace(/^- (.+)$/gm, '<li class="ai-md-li">$1</li>')
+    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (m) => `<ul class="ai-md-ul">${m}</ul>`)
+    .replace(/^\d+\. (.+)$/gm, '<li class="ai-md-oli">$1</li>')
+    .replace(/(<li class="ai-md-oli">.*<\/li>\n?)+/g, (m) => `<ol class="ai-md-ol">${m}</ol>`)
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function appendAiMessage(role, content) {
+  const container = $("ai-chat-messages");
+  if (!container) return null;
+
+  const msg = document.createElement("div");
+  msg.className = `ai-msg ai-msg--${role}`;
+
+  if (role === "assistant") {
+    msg.innerHTML = `
+      <div class="ai-msg-avatar">&#x1F6E1;</div>
+      <div class="ai-msg-bubble"><p>${simpleMarkdown(content)}</p></div>
+    `;
+  } else {
+    msg.innerHTML = `
+      <div class="ai-msg-bubble"><p>${escapeHtml(content)}</p></div>
+    `;
+  }
+
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+  return msg;
+}
+
+async function sendAiMessage(userText) {
+  if (aiState.streaming || !userText.trim()) return;
+
+  const input = $("ai-chat-input");
+  const sendBtn = $("ai-chat-send");
+  const btnText = sendBtn?.querySelector(".btn-text");
+  const btnLoader = sendBtn?.querySelector(".btn-loader");
+
+  // Add user message
+  aiState.messages.push({ role: "user", content: userText.trim() });
+  appendAiMessage("user", userText.trim());
+
+  // Clear input
+  if (input) { input.value = ""; input.style.height = "auto"; }
+
+  // Hide quick actions after first message
+  const quickActions = document.querySelector(".ai-quick-actions");
+  if (quickActions) quickActions.classList.add("hidden");
+
+  // Loading state
+  aiState.streaming = true;
+  if (sendBtn) sendBtn.disabled = true;
+  if (btnText) btnText.classList.add("hidden");
+  if (btnLoader) btnLoader.classList.remove("hidden");
+
+  // Create assistant message placeholder
+  const assistantMsg = appendAiMessage("assistant", "");
+  const bubble = assistantMsg?.querySelector(".ai-msg-bubble");
+  let fullContent = "";
+
+  try {
+    const response = await fetch("/api/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: aiState.messages.slice(-20) }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Request failed: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullContent += delta;
+            if (bubble) bubble.innerHTML = `<p>${simpleMarkdown(fullContent)}</p>`;
+          }
+        } catch {
+          // skip malformed chunks
+        }
+      }
+
+      // Keep scrolled to bottom
+      const container = $("ai-chat-messages");
+      if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    // Save assistant response
+    if (fullContent) {
+      aiState.messages.push({ role: "assistant", content: fullContent });
+    } else {
+      if (bubble) bubble.innerHTML = `<p class="ai-msg-error">No response received. Please try again.</p>`;
+    }
+  } catch (error) {
+    if (bubble) bubble.innerHTML = `<p class="ai-msg-error">${escapeHtml(error.message)}</p>`;
+    showToast(error.message, "error");
+  } finally {
+    aiState.streaming = false;
+    if (sendBtn) sendBtn.disabled = false;
+    if (btnText) btnText.classList.remove("hidden");
+    if (btnLoader) btnLoader.classList.add("hidden");
+  }
+}
+
+function initAiChat() {
+  const form = $("ai-chat-form");
+  const input = $("ai-chat-input");
+
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendAiMessage(input?.value || "");
+  });
+
+  // Enter to send (Shift+Enter for newline)
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendAiMessage(input.value);
+    }
+  });
+
+  // Auto-resize textarea
+  input?.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  });
+
+  // Quick action buttons
+  document.querySelectorAll(".ai-quick-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const prompt = btn.dataset.prompt;
+      if (prompt) sendAiMessage(prompt);
+    });
+  });
+}
+
 /* ── Boot ── */
 
 async function boot() {
+  initModeSwitcher();
+  initAiChat();
   initSmoothScroll();
   initReportTabs();
   wireCopyButtons();

@@ -1,11 +1,22 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { auditEvent, createCommunityReport, createWarningPage, getHeatmapGrid, getWarningPage, rollupHeatmap, upsertPattern } from "./db/repository";
+import {
+  auditEvent,
+  createCommunityReport,
+  createWarningPage,
+  getDashboardStats,
+  getHeatmapGrid,
+  getRecentReports,
+  getWarningPage,
+  rollupHeatmap,
+  upsertPattern,
+} from "./db/repository";
 import { checkRateLimit } from "./core/rateLimit";
 import { logger } from "./core/logger";
 import { KILLER_PITCH_LINE, calculateRecoveryProgress, emergencyPlaybook, recoveryTasks } from "./core/playbook";
 import { generateIncidentReports } from "./core/reportGenerator";
 import * as verdictService from "./core/verdictService";
+import { renderDashboardPage, renderReportsPage } from "./server/pages";
 import { generateSlug, storeWarningCard } from "./core/warningCard";
 import { fingerprintFromIdentifiers, validateChain, validateInput, validateSlug } from "./core/validation";
 import type { Env, QueueMessage, ReportRequest, WarningCardPayload } from "./types";
@@ -382,6 +393,20 @@ app.get("/api/health", (c) => {
   });
 });
 
+app.get("/app", async (c) => {
+  return c.env.ASSETS.fetch(new Request(new URL("/index.html", c.req.url)));
+});
+
+app.get("/dashboard", async (c) => {
+  const [stats, heatmap] = await Promise.all([getDashboardStats(c.env.DB), getHeatmapGrid(c.env.DB)]);
+  return c.html(renderDashboardPage(c.env.APP_NAME, c.env.REGION, stats, heatmap));
+});
+
+app.get("/reports", async (c) => {
+  const [stats, reports] = await Promise.all([getDashboardStats(c.env.DB), getRecentReports(c.env.DB, 25)]);
+  return c.html(renderReportsPage(c.env.APP_NAME, c.env.REGION, stats, reports));
+});
+
 app.get("/api/playbook", (c) => {
   return c.json({
     killerPitch: KILLER_PITCH_LINE,
@@ -608,6 +633,103 @@ app.get("/api/heatmap", async (c) => {
   return c.json({
     generatedAt: new Date().toISOString(),
     grid,
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  AI Chat (OpenRouter → Gemini 3 Flash)                              */
+/* ------------------------------------------------------------------ */
+
+const AI_SYSTEM_PROMPT = `You are ScamShield MY — an AI scam-response specialist for Malaysia.
+Your job: help scam victims take immediate action to stop bleeding, preserve evidence, generate reports, and contain the spread.
+
+PERSONALITY: Calm, authoritative, empathetic but action-oriented. You speak like a crisis responder — no fluff, every sentence moves the victim forward. Use Malaysian context (MYR, local banks, NSRC 997, PDRM CCID, BNM).
+
+CAPABILITIES YOU CAN GUIDE USERS TO (these are built into the app):
+1. **Verdict Check** — Paste a wallet address, token contract, or social handle to get an instant risk score.
+2. **Emergency Playbook** — Step-by-step: freeze bank, call NSRC 997, lock SIM, rotate passwords.
+3. **Report Generator** — Auto-generate copy-paste reports for bank, police (PDRM), and platform.
+4. **Recovery Checklist** — Track containment progress (bank freeze, revoke approvals, password rotation, SIM lock, evidence bundle, warn contacts).
+5. **Warning Card** — Generate shareable warning cards to protect others in the victim's network.
+6. **Scam Heatmap** — See trending scam types and platforms in Malaysia.
+
+EMERGENCY CONTACTS:
+- NSRC (National Scam Response Centre): 997
+- PDRM CCID (Cyber Crime): https://semakmule.rmp.gov.my
+- BNM Fraud hotline: 1-300-88-5465
+- MCMC complaint: https://aduan.skmm.gov.my
+
+CONVERSATION FLOW:
+1. If user describes a scam → immediately ask what type (investment, romance, phishing, impersonation, crypto drain, job scam, etc.) and when it happened.
+2. Prioritize STOP THE BLEEDING actions first (bank freeze, revoke approvals).
+3. Then guide evidence collection.
+4. Then reporting (bank, police, platform).
+5. Suggest using the app's built-in tools (verdict check, report generator, warning card).
+6. If user pastes a wallet/contract address → suggest they use the Verdict Check tool.
+
+RULES:
+- Never promise fund recovery. Say: "Recovery is not guaranteed, but fast action improves the odds."
+- Always recommend calling 997 (NSRC) for bank-related scams.
+- Be specific with Malaysian institutions and processes.
+- Keep responses concise. Use bullet points for action items.
+- If unsure, say so. Never fabricate legal advice.
+- You can use markdown formatting.
+- Respond in the same language the user writes in (Malay or English).`;
+
+const aiChatSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(4000),
+  })).min(1).max(50),
+});
+
+app.post("/api/ai/chat", async (c) => {
+  const apiKey = c.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return jsonError("AI chat is not configured.", 503);
+  }
+
+  const parsed = aiChatSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return jsonError("Invalid chat payload.");
+  }
+
+  const messages = [
+    { role: "system", content: AI_SYSTEM_PROMPT },
+    ...parsed.data.messages,
+  ];
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://scamshield-my.m-naim.workers.dev",
+      "X-Title": "ScamShield MY",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview:online",
+      messages,
+      stream: true,
+      max_tokens: 2048,
+      temperature: 0.4,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    logger.error("ai_chat_upstream_error", { status: response.status, error: errorText });
+    return jsonError("AI service unavailable. Try again shortly.", 502);
+  }
+
+  // Stream the response through
+  return new Response(response.body, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    },
   });
 });
 

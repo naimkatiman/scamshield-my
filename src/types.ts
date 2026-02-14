@@ -99,4 +99,7 @@ export interface Env {
   HONEYPOT_API_BASE?: string;
   CHAINABUSE_API_BASE?: string;
   CRYPTOSCAMDB_API_BASE?: string;
+  OPENROUTER_API_KEY?: string;
+  GOPLUS_APP_KEY?: string;
+  GOPLUS_APP_SECRET?: string;
 }

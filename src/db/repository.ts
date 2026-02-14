@@ -20,6 +20,37 @@ interface WarningPageRow {
   og_image_r2_key: string;
 }
 
+interface DashboardCountRow {
+  total: number;
+}
+
+interface CommunityReportListRow {
+  id: number;
+  created_at: string;
+  platform: string;
+  category: string;
+  severity: string;
+  status: string;
+  narrative: string;
+}
+
+export interface DashboardStats {
+  totalReports: number;
+  openReports: number;
+  warningPages: number;
+  cachedVerdicts: number;
+}
+
+export interface CommunityReportListItem {
+  id: number;
+  createdAt: string;
+  platform: string;
+  category: string;
+  severity: string;
+  status: string;
+  narrativePreview: string;
+}
+
 function parseJsonArray(value: string): string[] {
   try {
     const parsed = JSON.parse(value);
@@ -246,6 +277,45 @@ export async function getHeatmapGrid(db: D1Database): Promise<HeatmapCell[]> {
     category: row.category,
     count: Number(row.count_7d),
     trend: Number(row.count_7d) > Number(row.count_prev_7d) ? "↑" : Number(row.count_7d) < Number(row.count_prev_7d) ? "↓" : "→",
+  }));
+}
+
+export async function getDashboardStats(db: D1Database): Promise<DashboardStats> {
+  const [totalReports, openReports, warningPages, cachedVerdicts] = await Promise.all([
+    db.prepare("SELECT COUNT(*) as total FROM community_reports").first<DashboardCountRow>(),
+    db.prepare("SELECT COUNT(*) as total FROM community_reports WHERE status = 'open'").first<DashboardCountRow>(),
+    db.prepare("SELECT COUNT(*) as total FROM warning_pages").first<DashboardCountRow>(),
+    db.prepare("SELECT COUNT(*) as total FROM verdict_cache").first<DashboardCountRow>(),
+  ]);
+
+  return {
+    totalReports: Number(totalReports?.total ?? 0),
+    openReports: Number(openReports?.total ?? 0),
+    warningPages: Number(warningPages?.total ?? 0),
+    cachedVerdicts: Number(cachedVerdicts?.total ?? 0),
+  };
+}
+
+export async function getRecentReports(db: D1Database, limit = 20): Promise<CommunityReportListItem[]> {
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const result = await db
+    .prepare(
+      `SELECT id, created_at, platform, category, severity, status, narrative
+       FROM community_reports
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(safeLimit)
+    .all<CommunityReportListRow>();
+
+  return (result.results ?? []).map((row) => ({
+    id: Number(row.id),
+    createdAt: row.created_at,
+    platform: row.platform,
+    category: row.category,
+    severity: row.severity,
+    status: row.status,
+    narrativePreview: row.narrative.slice(0, 120),
   }));
 }
 

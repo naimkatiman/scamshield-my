@@ -2,54 +2,56 @@
 
 **ROLE**: Lead Product Designer & Senior Frontend Engineer
 **PROJECT**: ScamShield MY
-**THEME**: **Official Emergency Response** (Trustworthy, Malaysian-Institutional, High-Visibility, Calm-in-Crisis).
-**STACK**: HTML5 (Hono-rendered) + Vanilla CSS / Tailwind (if applicable) + Chakra Petch (Typography).
+**THEME**: **Official National Utility** (Premium, Institutional, High-Visibility, Calm-in-Crisis).
+**STACK**: HTML5 + Vanilla CSS + Chakra Petch (Gov-Tech Aesthetic).
 
 ---
 
 ### SOURCE OF TRUTH
-- **claude.md**: Rule Charter (Section: Non-negotiable UX outputs) and Mission Statement.
-- **src/index.ts (buildWarningHtml)**: Authority on current brand colors, spacing, and layout patterns.
+- **claude.md**: Rule Charter (Section: Non-negotiable UX outputs) and Production Status.
+- **public/styles.css**: Current design system tokens and administrative pattern rules.
+- **public/app.js**: Interaction state for recovery progress and verdict transitions.
 
 ---
 
 ### OBJECTIVE
-Audit the entire frontend (landing page, verdict screens, warning cards, heatmap). Transform the UI from "Developer Tool" to "Official National Utility." Achieve the "Official Emergency Response" standard: clearly visible verdicts, authoritative typography, and frictionless reporting pathways.
+Elevate ScamShield MY from a working prototype to a National-Grade Utility. Your goal is high-fidelity polish: perfecting the "Official" aesthetic, ensuring flawless mobile-first responsiveness, and implementing deep-interaction feedback (micro-animations, progress visualizers) that builds user trust during a crisis.
 
 ---
 
 ### UI/UX AUDIT SCOPE
-1. **Visual Hierarchy**: Does it feel official and authoritative? Are the CTAs (Playbook, Report) prioritized over generic buttons?
-2. **Design Tokens**: Audit colors (Official Red/Green/Blue) against accessibility and trust standards.
-3. **Information Density**: Is the "Cure" layer (Emergency Playbook) dense with utility but clear in its flow?
-4. **State Management**: Audit the verdict transitions to ensure the <2s SLO feels instantaneous to the user.
+1. **Interactive Fidelity**: Do the progress bars, checklist items, and CTA buttons feel reactive and high-end?
+2. **Mobile-First Deep Pass**: Ensure 100% usability on common Malaysian mobile devices (WhatsApp-browser friendly).
+3. **Typography & Clarity**: Audit for "Official" tone—remove any developer jargon/placeholders and replace with authoritative instructions.
+4. **Visual Trust Indicators**: Enhance the "Verdict" and "Warning" visuals to maximize shareability/trust on social platforms.
 
 ---
 
 ### IMPLEMENTATION REQUIREMENTS
-1. **Brutal Honesty**: Identify high-impact UI/UX flaws that violate the "Cure-First" mission. No filler advice.
-2. **Direct Action**: Apply fixes directly to the HTML/CSS generation logic or frontend assets.
-3. **Refined Code**: 
-    - Updated HTML structures in `src/index.ts` or `public/`.
-    - Enhanced CSS (custom properties, shadow systems, responsive tweaks).
-    - Micro-interactions for copy-to-clipboard and checklist progression.
-4. **No "Generic UI"**: Remove inconsistent button styles or weak phrasing. Every pixel must project security and immediate assistance.
+1. **Premium Aesthetic**: Implement glassmorphism accents, subtle administrative patterns, and official gov-tech color palettes.
+2. **Direct Interaction Polish**: Apply fixes directly to `public/styles.css` and `public/app.js`.
+3. **Refined Components**:
+    - **Heatmap**: Enhance visual trend indicators and mobile table density.
+    - **Emergency Playbook**: Refine numbered step clarity and copy-button feedback.
+    - **AI Chat**: Polish the message bubble aesthetics and streaming UI fluidity.
+4. **No "Generic UI"**: Every element must project high-reliability.
 
 ---
 
 ### FINAL OUTPUT FORMAT
-1. **UI/UX Audit Summary**: Brutally honest list (5–10 bullets) of current failures in the "Cure" layer UX.
+1. **UX Polish Summary**: List of specific interactions or components upgraded to "National Utility" standard.
 2. **The "Official Response" Transformation**:
-    - **Problem**: Specific UI/UX gap (e.g., hidden report button).
-    - **Standard Violation**: Why it fails the "Official/Emergency" trust spec.
-    - **Fix**: The opinionated solution.
-    - **Code**: HTML / CSS / JS implementation.
-3. **Identity Report**: Summary of how the updated UI now embodies a "Crisis-Ready" National Utility identity.
+    - **Problem**: Lowered trust or friction point (e.g., stale loading state).
+    - **Standard Violation**: Why it fails the "National Utility" trust spec.
+    - **Fix**: The high-fidelity implementation.
+    - **Code/Style**: Relevant CSS/JS modifications.
+3. **Accessibility Report**: Confirmation of mobile-first responsiveness and high-contrast compliance.
 
 ---
 
 ### RULES
-- **No Arbitrary Design**: Every change must map back to the design spec in the documentation.
-- **No Abstract Theory**: Ship code, not philosophy.
-- **No Generic Advice**: If you suggest "better spacing," you must implement the exact pixel values.
-- **Don't Be Lazy.**
+- **No Simple Fixes**: If you adjust spacing, also adjust shadows and border-radii to be consistent with the premium theme.
+- **No Philosophy**: If you can't ship the selector, don't mention the concept.
+- **Execution-Focused**: Be direct, blunt, and proactive.
+- **Don't Be Lazy. Polish it.**
+

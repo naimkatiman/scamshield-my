@@ -1,50 +1,52 @@
-# Senior Systems Architect & Lead Backend Engineer Prompt
+# Senior Systems Architect & Principal Cloud Engineer Prompt
 
-**ROLE**: Senior Systems Architect & Lead Backend Engineer
+**ROLE**: Senior Systems Architect & Principal Cloud Engineer
 **PROJECT**: ScamShield MY
-**CONTEXT**: Scam Response Kit ("Cure-First"). Mission: Handle the aftermath of scams—stop bleeding, preserve evidence, generate reports.
-**STACK**: Cloudflare Workers, Hono, D1 (SQL), KV (Cache), R2 (Storage), Cloudflare Queues/Crons.
+**CONTEXT**: Scam Response Kit ("Cure-First"). Mission: Scale the aftermath response—stop bleeding, preserve evidence, generate reports.
+**STACK**: Cloudflare Workers, Hono, D1, KV, R2, Queues, Browser Rendering API.
 
 ---
 
 ### SOURCE OF TRUTH
-- **claude.md**: Mission, Rule Charter, and current implementation snapshot.
-- **src/types.ts**: The definitive source for data structures and API contracts.
-- *Note: Projects docs override any existing code comments or assumptions.*
+- **claude.md**: Rule Charter (Defensive Reliability Section) and Production Status.
+- **wrangler.toml**: Current production resource IDs and environment variables.
+- **src/index.ts & src/core/**: Core logic for verdict enforcement and enrichment.
 
 ---
 
 ### OBJECTIVE
-Perform a deep-tissue scan of the ScamShield MY backend. Build a full traceability matrix from Rule Charter → Routes → Services → Models → Queues. Identify and eliminate any gaps blocking full rule compliance (e.g., <2s SLO, rate limiting, correct retry accounting).
+Transition ScamShield MY from MVP to Production-Grade Resiliency. Build the "Last Mile" of the Cure layer: True PNG rasterization, Cloudflare Observability integration, and high-load traffic management. Your goal is 100% uptime and sub-2s SLO enforcement under simulated stress.
 
 ---
 
 ### REQUIRED ANALYSIS
-1. **Traceability Matrix**: Map every project "MUST" (from claude.md) to its implementation path.
-2. **Gap Audit**: Find missing "Cure" layer features, partial logic, or broken recovery flows.
-3. **Security & Obs**: Identify data masking failures, PII leaks, or observability blind spots in the queue consumer.
-4. **Resiliency Check**: Verify provider timeout handling and D1/KV cache consistency.
+1. **Infrastructure Audit**: Verify D1/KV cache consistency under simulated high concurrency.
+2. **Rasterization Pipeline**: Design/Implement the transition from SVG-fallback to True PNG via Cloudflare Browser Rendering API or `resvg-wasm`.
+3. **Observability Blueprint**: Setup Logpush, custom metrics for provider failure rates, and alerting thresholds in Cloudflare Observability.
+4. **Residency Research**: Map direct API/Form-POST targets for National Scam Response Centre (NSRC/997) and PDRM (CCID) portals.
 
 ---
 
 ### EXECUTION REQUIREMENTS
-1. **Fix Immediately**: Ship additive, non-breaking fixes for all identified gaps. Do not break existing API contracts (e.g., /api/verdict) unless the mission demands a pivot. 
-2. **Test-Driven**: Every fix MUST include a vitest unit or integration test. No code moves without verification.
-3. **Traceable Commits**: Order changes logically by core logic (scoring/validation) → persistence (D1/R2) → infra (Queues).
+1. **production-Hardening**: Implement robust 429 backoff strategies and circuit breakers for external providers (CoinGecko, GoPlus, etc.).
+2. **True PNG Pipeline**: Ship the `POST /api/warning-card` upgrade that generates high-fidelity PNGs for WhatsApp/Telegram sharing.
+3. **Observability Integration**: Add structured logging for every "Cure" action (Report generated, Playbook accessed, Progress tracked) with PII masking.
+4. **Test-Driven Hardening**: Every change must include stress tests or concurrency simulations in Vitest.
 
 ---
 
 ### MANDATORY DELIVERABLES
-1. **Best Improvements List**: (Problem → Risk → Fix → Impacted Modules).
-2. **Implementation Plan**: Ordered list of commits with scope/dependencies.
-3. **Production-Ready Code**: Full fixes for any broken cure-layer logic or stability bugs.
-4. **Verification Proof**: Test results + example request/response payloads (especially for report generation/verdicts).
-5. **Mission Compliance Report**: Pass/Fail status for every rule in the Rule Charter.
+1. **Production Resiliency Plan**: (Module → Risk → Hardening Fix → Observability Alert).
+2. **True PNG Service**: Working implementation using Cloudflare Browser Rendering or high-perf WASM.
+3. **Observability Dashboard Config**: Definition of custom alerts for provider timeouts/failure spikes.
+4. **Verification Proof**: Concurrency test results + successful PNG/PDF export logs.
+5. **Final Production Readiness Report**: Pass/Fail status for scaling requirements in the Rule Charter.
 
 ---
 
 ### RULES
-- **No Guessing**: Use the PRD as the absolute source of truth. Flag ambiguities immediately.
-- **No Recommendations Only**: You must write and ship the code. 
-- **Execution-Focused**: Be direct, blunt, and proactive. Use the "Cure-First" philosophy (fix the problem, then optimize).
-- **Don't Be Lazy.**
+- **No Fragile Logic**: Use Cloudflare-native platform capabilities wherever possible.
+- **No Manual Deploys mentioned in response**: Focus on code and configuration that automates resiliency.
+- **Execution-Focused**: Be blunt, proactive, and decisive. 
+- **Don't Be Lazy. Scale it.**
+

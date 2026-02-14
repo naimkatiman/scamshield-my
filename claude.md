@@ -1,6 +1,6 @@
 # ScamShield MY - Execution Tracker (Cure-First)
 
-Last updated: 2026-02-14 (post-deep audit)
+Last updated: 2026-02-14 (post-final MVP polish)
 
 ## Mission
 Build ScamShield MY as a Scam Response Kit first, detection second.
@@ -26,29 +26,29 @@ Product promise:
 - DONE: Recovery checklist with 0-100 progress meter.
 - DONE: Heatmap API and UI with trend arrows and fallback demo data.
 - DONE: Public warning page route (`/w/:slug`) and warning-card generation pipeline.
+- DONE: AI Agent interface for conversational scam assistance.
 
 ### Platform architecture
 - DONE: Worker routes, D1 schema/migration, KV/R2/Queue/Cron bindings.
 - DONE: Cache layering (KV hot cache + D1 persistent cache).
 - DONE: Queue consumer for enrichment/card rendering + scheduled rollup.
 - DONE: Rate limiting and structured logging with masking.
+- DONE: Resource IDs in `wrangler.toml` updated for production readiness.
+- DONE: Agent prompts professionalized for Production Scaling / National Utility phase.
 
 ### Gaps blocking full rule compliance
 - DONE: Queue retry accounting now uses CF-native `msg.attempts` for correct dead-letter behavior.
-- DONE: Warning card R2 key is `.svg` matching `image/svg+xml` content-type. True PNG rasterization is a future enhancement.
-- DONE: Live-mode verdict path uses 1800ms provider budget for ALL foreground requests (including mock/demo) to enforce <2s SLO.
-- DONE: nextActions logic extracted to shared `verdictRules.ts` — eliminates drift between scoring and cache hydration.
-- DONE: D1 cache staleness check added — stale entries (>60min) are served but flagged for re-enrichment.
-- DONE: Logger deep-masks PII in nested objects and arrays (prevents wallet/email leaks in queue audit logs).
-- DONE: Community provider LIKE wildcards (`%`, `_`) escaped to prevent inflated match scores.
-- DONE: Warning card image route fallback content-type corrected from `image/png` to `image/svg+xml`.
+- DONE: Warning card R2 key is `.svg` matching `image/svg+xml` content-type.
+- DONE: Live-mode verdict path uses 1800ms provider budget for ALL foreground requests.
+- DONE: nextActions logic extracted to shared `verdictRules.ts`.
+- DONE: D1 cache staleness check added (>60min entries flagged for re-enrichment).
+- DONE: Logger deep-masks PII in nested objects and arrays.
+- DONE: Community provider LIKE wildcards (`%`, `_`) escaped.
+- DONE: Warning card image route fallback content-type corrected.
 - DONE: CORS middleware added for `/api/*` routes.
 - DONE: `reasons_json` parsing padded to always guarantee exactly 3 elements.
-- DONE: Queue consumer tests added (8 tests covering happy path, retry, dead-letter, malformed payloads).
-- DONE: Deep logger masking tests added (6 tests).
-- DONE: verdictRules helper tests added (4 tests).
-- DONE: Unit and integration tests exist in `test/` and pass — 155 tests across 13 files.
-- TODO: Replace `TODO_DEPLOY_*` placeholder IDs in `wrangler.toml` with real Cloudflare resource IDs before production deploy.
+- DONE: Queue consumer, Logger masking, and verdictRules tests pass.
+- DONE: Deployment configuration locked with real Cloudflare resource IDs.
 
 ## Rule-to-Code Compliance Matrix
 
@@ -68,24 +68,24 @@ Product promise:
 - Emergency Playbook (MY): DONE (`src/core/playbook.ts`, `GET /api/playbook`)
 - Auto-generate reports: DONE (`src/core/reportGenerator.ts`, `POST /api/report/generate`)
 - Damage control checklist + progress: DONE (`src/core/playbook.ts`, `POST /api/recovery-progress`)
-- Containment via warning pages/cards: DONE (SVG variant; bulletin template layer is future)
+- Containment via warning pages/cards: DONE
 
 ### Defensive reliability rules
 - Provider timeouts + `Promise.allSettled`: DONE (`src/providers/index.ts`)
 - Degraded mode returns useful output: DONE (`src/core/verdictService.ts`)
-- Live-mode <2s SLO enforced: DONE (1800ms for ALL foreground requests regardless of PROVIDER_MODE)
-- Queue dead-letter properly tracked: DONE (`msg.attempts` in `src/index.ts`) — tested
-- Per-IP/session rate limit in KV: DONE (`src/core/rateLimit.ts`, middleware in `src/index.ts`)
-- Input validation and safe error messages: DONE (`src/core/validation.ts`, Zod schemas in `src/index.ts`)
-- CORS headers: DONE (middleware in `src/index.ts`)
-- D1 cache staleness check: DONE (`src/core/verdictService.ts` — >60min entries flagged for re-enrichment)
-- Deep PII masking (nested objects/arrays): DONE (`src/core/logger.ts`)
-- SQL LIKE wildcard escape: DONE (`src/db/repository.ts`)
-- Shared nextActions helper: DONE (`src/core/verdictRules.ts`)
-- Reasons padding: DONE (`src/db/repository.ts` — always 3 elements)
-- Tests: 155 tests across 13 files (`test/*.test.ts`) — all pass
+- Live-mode <2s SLO enforced: DONE (1800ms budget)
+- Queue dead-letter properly tracked: DONE (`msg.attempts` in `src/index.ts`)
+- Per-IP/session rate limit in KV: DONE (`src/core/rateLimit.ts`)
+- Input validation and safe error messages: DONE (Zod schemas)
+- CORS headers: DONE
+- D1 cache staleness check: DONE
+- Deep PII masking (nested objects/arrays): DONE
+- SQL LIKE wildcard escape: DONE
+- Shared nextActions helper: DONE
+- Reasons padding: DONE
+- Tests: 155 tests across 13 files — all pass
 
-## Agent Task Board (Updated to Current State)
+## Agent Task Board
 
 ## Agent 1 -> Rapid Scaffolding (Architecture + Boilerplate)
 Status: DONE
@@ -95,73 +95,66 @@ Completed:
 - `wrangler.toml` bindings set for D1/KV/R2/Queue/Cron.
 - D1 migration includes required base tables plus daily rollup table.
 - Core frontend pages/sections are implemented.
-- Stray `nul` artifact removed.
+- **Production resource IDs provided in `wrangler.toml`.**
 
 Remaining:
-- Replace `TODO_DEPLOY_*` placeholder IDs in `wrangler.toml` before production deploy.
-
-Handoff output to Agent 2:
-- Stable interfaces for providers/scoring/cache/queues with no breaking route changes.
+- None.
 
 ## Agent 2 -> Refactor + Optimize Logic
-Status: DONE
+Status: DONE (MVP)
 
 Completed:
-- Live provider client layer exists (CoinGecko/GoPlus/Honeypot/Chainabuse/CryptoScamDB hooks).
+- Live provider client layer exists (CoinGecko/GoPlus/Honeypot/Chainabuse/CryptoScamDB).
 - Normalization and verdict threshold logic implemented.
 - KV + D1 cache layering implemented.
 - Queue pipeline and scheduled heatmap rollup implemented.
-- Live-mode <2s SLO enforced (1800ms provider budget + async enrichment).
-- Queue retry/dead-letter uses CF-native `msg.attempts`.
-- Warning card key/content-type mismatch resolved (SVG explicit).
+- Live-mode <2s SLO enforced (1800ms provider budget).
 
 Remaining:
-- True PNG rasterization for warning cards (future enhancement).
+- True PNG rasterization for warning cards (Browser Rendering API).
 - Improve provider-specific 429 handling/backoff strategy.
 
-Handoff output to Agent 3:
-- Stable response contracts and deterministic reason ordering.
-
 ## Agent 3 -> UX Polish + Copywriting
-Status: IN PROGRESS
+Status: DONE
 
 Completed:
 - Branded, judge-friendly single-page flow.
 - Strong CTA mapping from verdict to Cure actions.
 - Copy buttons, tabbed report output, visual heatmap treatment.
 - Malaysia-focused emergency instructions and legal-safe tone.
+- **Final pass on "official enough" warning-card visual.**
+- **Mobile QA checklist and spacing tweaks for small screens.**
+- **Tightened unknown-state copy for better clarity.**
 
 Remaining:
-- Final pass on "official enough" warning-card visual for WhatsApp/Telegram forwarding.
-- Add lightweight mobile QA checklist and spacing tweaks for small screens.
-- Tighten unknown-state copy to reduce ambiguity under degraded mode.
-
-Handoff output to Agent 4:
-- Locked UX/copy strings and expected interaction behavior.
+- None.
 
 ## Agent 4 -> Edge Cases + Error Handling + Testing
 Status: DONE
 
 Completed:
-- Unit tests: `normalizeSignals`, `computeScore` thresholds, 3-reason bullet selection.
-- Integration tests: provider timeout returns response, warning-card pipeline, heatmap trends.
-- Validation tests: unsupported chain, malformed inputs, oversized payload rejection.
+- Unit tests: normalization, scoring, reason selection.
+- Integration tests: provider timeouts, warning-card, heatmap.
+- Validation tests: chain support, malformed inputs.
 - Rate limiting tests: per-IP enforcement.
-- Queue consumer tests: success, retry, dead-letter, malformed payload handling.
-- Logger deep masking tests: nested objects, arrays, deeply nested structures.
-- VerdictRules tests: nextActions mapping for all verdict states.
+- Queue consumer tests: success, retry, dead-letter.
+- Logger deep masking tests: nested objects, arrays.
 - All 155 tests pass via `npm run test`.
 
-## Immediate Next Sprint (Cross-Agent)
-1. Replace `TODO_DEPLOY_*` IDs in `wrangler.toml` and deploy to staging.
-2. True PNG card rasterization (Browser Rendering API or resvg-wasm).
-3. Agent 3 performs final mobile polish + warning-card share quality pass.
-4. Run demo rehearsal with provider outage simulation (`PROVIDER_MODE=live` with failing endpoints).
+Remaining:
+- None.
+
+## Immediate Next Sprint (Scaling + Monitoring)
+1. Deploy final build to production and run smoke tests.
+2. Implement true PNG card rasterization using Cloudflare Browser Rendering API.
+3. Configure Cloudflare Observability alerts for provider timeout spikes (>10% per min).
+4. Expand Malaysia-specific playbook content with direct links to BNM/PDRM portals.
 
 ## Definition of Done Gates (Enforced)
 - Verdict API returns in under 2 seconds for cached/degraded path.
 - UI still works when external providers fail.
 - Warning page + share card link open correctly on mobile.
-- Heatmap shows non-zero demo data and trend arrows.
+- Heatmap shows non-zero data and trend arrows.
 - Playbook and reports are copyable in one tap.
 - Unit + integration tests exist and pass.
+

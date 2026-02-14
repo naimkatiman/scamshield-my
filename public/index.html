@@ -22,6 +22,62 @@
   <div id="toast-container" class="toast-container"></div>
 
   <main class="container">
+    <!-- Mode Switcher -->
+    <div class="mode-switcher">
+      <button id="mode-ai" class="mode-btn mode-btn--active" data-mode="ai">
+        <span class="mode-icon">&#x2728;</span> AI Assistant
+      </button>
+      <button id="mode-manual" class="mode-btn" data-mode="manual">
+        <span class="mode-icon">&#x1F527;</span> Manual Toolkit
+      </button>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  AI MODE                                                      -->
+    <!-- ============================================================ -->
+    <div id="ai-mode" class="mode-panel">
+      <header class="hero card ai-hero">
+        <div class="hero-badge">
+          <span class="shield-icon">&#x1F6E1;</span>
+          <span class="eyebrow">ScamShield MY</span>
+        </div>
+        <h1>Got scammed?<br>Tell me what happened.</h1>
+        <p class="killer-line">AI-powered scam response. Describe your situation and I'll guide you through immediate actions.</p>
+      </header>
+
+      <section class="card ai-chat-card">
+        <div id="ai-chat-messages" class="ai-chat-messages">
+          <div class="ai-msg ai-msg--assistant">
+            <div class="ai-msg-avatar">&#x1F6E1;</div>
+            <div class="ai-msg-bubble">
+              <p><strong>I'm your ScamShield AI assistant.</strong></p>
+              <p>Tell me what happened — what type of scam, when it occurred, and what you've done so far. I'll guide you through the fastest containment steps.</p>
+              <p class="ai-msg-hint">You can write in English or Bahasa Melayu.</p>
+            </div>
+          </div>
+        </div>
+
+        <form id="ai-chat-form" class="ai-chat-input-row">
+          <textarea id="ai-chat-input" class="ai-chat-input" placeholder="Describe your situation... e.g. &quot;I sent RM5,000 to a fake investment group on Telegram 2 hours ago&quot;" rows="2"></textarea>
+          <button type="submit" id="ai-chat-send" class="btn btn-primary ai-chat-send">
+            <span class="btn-text">Send</span>
+            <span class="btn-loader hidden">...</span>
+          </button>
+        </form>
+      </section>
+
+      <div class="ai-quick-actions">
+        <button class="ai-quick-btn" data-prompt="I just got scammed on Telegram. What do I do first?">I got scammed — what now?</button>
+        <button class="ai-quick-btn" data-prompt="Can you help me check if this wallet address is a scam?">Check a wallet address</button>
+        <button class="ai-quick-btn" data-prompt="Help me generate a police report for a scam I experienced.">Generate a report</button>
+        <button class="ai-quick-btn" data-prompt="What are the emergency numbers I should call in Malaysia?">Emergency contacts</button>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  MANUAL MODE                                                   -->
+    <!-- ============================================================ -->
+    <div id="manual-mode" class="mode-panel hidden">
     <!-- Hero -->
     <header class="hero card">
       <div class="hero-badge">
@@ -31,6 +87,8 @@
       <h1>Got scammed?<br>Start treatment in <span class="text-accent">15 minutes.</span></h1>
       <p id="killer-line" class="killer-line"></p>
       <nav class="hero-nav">
+        <a href="/dashboard" class="nav-pill">Server Dashboard</a>
+        <a href="/reports" class="nav-pill">Report Queue</a>
         <a href="#verdict-section" class="nav-pill" data-scroll>Check Suspect</a>
         <a href="#emergency-playbook" class="nav-pill nav-pill--urgent" data-scroll>Emergency Playbook</a>
         <a href="#report-generator" class="nav-pill" data-scroll>Generate Reports</a>
@@ -359,6 +417,8 @@
       </div>
       <button id="refresh-heatmap" class="btn btn-sm">Refresh Heatmap</button>
     </section>
+
+    </div><!-- /manual-mode -->
 
     <!-- Footer -->
     <footer class="footer">
