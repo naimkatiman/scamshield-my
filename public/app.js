@@ -4,6 +4,7 @@ const state = {
   playbook: null,
   recoveryTasks: [],
   completedTaskIds: new Set(),
+  latestWarning: null,
 };
 
 /* ── Utilities ── */
@@ -56,6 +57,44 @@ function verdictBadgeClass(verdict) {
   if (verdict === "HIGH_RISK") return "verdict-badge high";
   if (verdict === "LEGIT") return "verdict-badge legit";
   return "verdict-badge";
+}
+
+function verdictStateCopy(verdict, pendingEnrichment, providerErrors = []) {
+  const degraded = Boolean(pendingEnrichment) || providerErrors.length > 0;
+
+  if (verdict === "HIGH_RISK") {
+    return {
+      tone: "high",
+      text: degraded
+        ? "High-risk indicators are present and some live checks are still catching up. Treat this as active risk and start containment now."
+        : "High-risk indicators are present. Freeze exposure immediately and move to reporting and warning steps.",
+    };
+  }
+
+  if (verdict === "LEGIT") {
+    return {
+      tone: "legit",
+      text: degraded
+        ? "No high-risk signal yet, but live enrichment is still in progress. Stay cautious and verify through official channels."
+        : "No high-risk signal is currently detected. Keep monitoring and verify all payment requests through official channels.",
+    };
+  }
+
+  return {
+    tone: "unknown",
+    text: degraded
+      ? "Result is UNKNOWN because provider signals are delayed or incomplete. Treat as unverified and run the emergency steps now."
+      : "Result is UNKNOWN because signals are inconclusive. Treat as unverified and proceed with reporting and safety checks.",
+  };
+}
+
+function renderVerdictStateCopy(verdict, pendingEnrichment, providerErrors = []) {
+  const el = $("verdict-state-copy");
+  if (!el) return;
+
+  const copy = verdictStateCopy(verdict, pendingEnrichment, providerErrors);
+  el.textContent = copy.text;
+  el.className = `verdict-state-copy verdict-state-copy--${copy.tone}`;
 }
 
 const ACTION_SCROLL_MAP = {
@@ -117,6 +156,8 @@ async function onVerdictSubmit(event) {
       reasonsContainer.appendChild(card);
     });
 
+    renderVerdictStateCopy(payload.verdict, payload.pendingEnrichment, payload.providerErrors || []);
+
     // CTA buttons that scroll to relevant sections
     const ctaRow = $("verdict-next-actions");
     ctaRow.innerHTML = "";
@@ -133,8 +174,12 @@ async function onVerdictSubmit(event) {
       ctaRow.appendChild(btn);
     });
 
-    const pending = payload.pendingEnrichment ? " Background enrichment in progress." : "";
-    setText("verdict-meta", `Sources: ${payload.sources.join(", ") || "none"}.${pending}`);
+    const sourceSummary = payload.sources.join(", ") || "none";
+    const degraded = payload.pendingEnrichment || (payload.providerErrors || []).length > 0;
+    const modeSummary = degraded
+      ? "Preliminary result. Live enrichment is still running."
+      : "Result based on currently available provider signals.";
+    setText("verdict-meta", `Sources: ${sourceSummary}. ${modeSummary}`);
 
     autoFillWarningForm(payload, value);
 
@@ -143,6 +188,7 @@ async function onVerdictSubmit(event) {
   } catch (error) {
     showToast(error.message, "error");
     setText("verdict-meta", error.message);
+    $("verdict-state-copy")?.classList.add("hidden");
   } finally {
     submitBtn.disabled = false;
     btnText.classList.remove("hidden");
@@ -158,13 +204,16 @@ function escapeHtml(text) {
 
 function autoFillWarningForm(verdictPayload, identifierValue) {
   const warningForm = $("warning-form");
+  const headlineByVerdict = {
+    HIGH_RISK: "High-risk scam indicator detected",
+    UNKNOWN: "Unverified identifier under review",
+    LEGIT: "No high-risk signal detected - verify before sending funds",
+  };
+
   warningForm.querySelector("select[name='verdict']").value = verdictPayload.verdict;
-  warningForm.querySelector("input[name='headline']").value =
-    verdictPayload.verdict === "HIGH_RISK"
-      ? "High-risk scam indicator detected"
-      : "Unverified identifier - exercise caution";
+  warningForm.querySelector("input[name='headline']").value = headlineByVerdict[verdictPayload.verdict] || headlineByVerdict.UNKNOWN;
   warningForm.querySelector("input[name='identifier']").value = identifierValue;
-  warningForm.querySelector("input[name='reasons']").value = verdictPayload.reasons.join(" | ");
+  warningForm.querySelector("input[name='reasons']").value = verdictPayload.reasons.slice(0, 3).join(" | ");
 }
 
 /* ── Playbook ── */
@@ -205,7 +254,9 @@ function renderPlaybookList(id, items) {
   list.innerHTML = "";
   items.forEach((item) => {
     const li = document.createElement("li");
-    li.textContent = item;
+    li.className = "step-item";
+    // Check if item has title/desc structure (if string, treat as desc)
+    li.innerHTML = `<span class="step-desc">${escapeHtml(item)}</span>`;
     list.appendChild(li);
   });
 }
@@ -397,6 +448,34 @@ function initReportTabs() {
 
 /* ── Warning Card ── */
 
+function setWarningPreviewTone(verdict) {
+  const shell = $("warning-preview-shell");
+  const status = $("warning-preview-status");
+  if (!shell || !status) return;
+
+  shell.classList.remove("warning-preview-shell--high", "warning-preview-shell--legit");
+  status.textContent = verdict;
+
+  if (verdict === "HIGH_RISK") {
+    shell.classList.add("warning-preview-shell--high");
+    return;
+  }
+
+  if (verdict === "LEGIT") {
+    shell.classList.add("warning-preview-shell--legit");
+  }
+}
+
+function warningMetaCopy(verdict) {
+  if (verdict === "HIGH_RISK") {
+    return "High-risk bulletin generated. Prioritize forwarding to affected chats and support channels.";
+  }
+  if (verdict === "LEGIT") {
+    return "Verification bulletin generated. Share to prevent confusion while monitoring new signals.";
+  }
+  return "Unknown-state bulletin generated. Share as precaution while additional signals are still being verified.";
+}
+
 async function onWarningSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -425,8 +504,25 @@ async function onWarningSubmit(event) {
     pageLink.href = payload.warningPageUrl;
     pageLink.textContent = payload.warningPageUrl;
 
+    const openPage = $("open-warning-page");
+    if (openPage) openPage.href = payload.warningPageUrl;
+
+    const openImage = $("open-warning-image");
+    if (openImage) openImage.href = payload.imageUrl;
+
     const preview = $("warning-preview");
     preview.src = `${payload.imageUrl}?t=${Date.now()}`;
+
+    const verdict = form.verdict.value;
+    setWarningPreviewTone(verdict);
+    setText("warning-meta", warningMetaCopy(verdict));
+
+    state.latestWarning = {
+      pageUrl: payload.warningPageUrl,
+      imageUrl: payload.imageUrl,
+      verdict,
+      headline: form.headline.value,
+    };
 
     showToast("Warning card generated. Share the link.");
     output.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -464,6 +560,34 @@ function wireCopyButtons() {
       copyText(link.href, "Warning page link");
       flashCopied(e.currentTarget);
     }
+  });
+
+  $("share-warning")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (!state.latestWarning?.pageUrl) {
+      showToast("Generate a warning card first.", "error");
+      return;
+    }
+
+    const shareText = `${state.latestWarning.headline}\nVerdict: ${state.latestWarning.verdict}\n${state.latestWarning.pageUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "ScamShield MY Warning",
+          text: shareText,
+          url: state.latestWarning.pageUrl,
+        });
+        showToast("Share sheet opened");
+        return;
+      } catch (error) {
+        if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    copyText(shareText, "Warning summary");
   });
 
   // Heatmap refresh
@@ -507,6 +631,15 @@ async function boot() {
   $("verdict-form")?.addEventListener("submit", onVerdictSubmit);
   $("report-generate-form")?.addEventListener("submit", onReportGenerateSubmit);
   $("warning-form")?.addEventListener("submit", onWarningSubmit);
+
+  const warningVerdictSelect = document.querySelector("#warning-form select[name='verdict']");
+  warningVerdictSelect?.addEventListener("change", (event) => {
+    const nextVerdict = event.target.value || "UNKNOWN";
+    setWarningPreviewTone(nextVerdict);
+    setText("warning-meta", warningMetaCopy(nextVerdict));
+  });
+  setWarningPreviewTone(warningVerdictSelect?.value || "UNKNOWN");
+  setText("warning-meta", warningMetaCopy(warningVerdictSelect?.value || "UNKNOWN"));
 
   await Promise.all([loadPlaybook(), loadHeatmap()]);
 }

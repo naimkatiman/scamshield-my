@@ -10,11 +10,22 @@ function maskValue(value: string): string {
     });
 }
 
-function sanitize(data: Record<string, unknown>): Record<string, unknown> {
+function sanitize(data: Record<string, unknown>, depth = 0): Record<string, unknown> {
+  if (depth > 5) return data; // prevent stack overflow on deeply nested data
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === "string") {
       result[key] = maskValue(value);
+    } else if (Array.isArray(value)) {
+      result[key] = value.map((item) =>
+        typeof item === "string"
+          ? maskValue(item)
+          : typeof item === "object" && item !== null
+            ? sanitize(item as Record<string, unknown>, depth + 1)
+            : item,
+      );
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = sanitize(value as Record<string, unknown>, depth + 1);
     } else {
       result[key] = value;
     }

@@ -1,36 +1,70 @@
 /* ── ScamShield MY — Agent 3 UX Polish ── */
 
 :root {
-  --bg-main: #f5f1e8;
-  --bg-card: #fffcf5;
-  --bg-card-alt: #fef9ee;
-  --bg-input: #ffffff;
-  --text-main: #0f1d2f;
-  --text-secondary: #3d556d;
-  --text-muted: #6b839b;
-  --border: #d4c5a0;
-  --border-light: #e8ddc4;
-  --accent: #05668d;
-  --accent-strong: #028090;
-  --accent-light: #e6f4f8;
-  --danger: #c92a2a;
-  --danger-bg: #fef2f2;
-  --danger-border: #fca5a5;
-  --alert: #d9480f;
-  --alert-light: #fff4e6;
-  --ok: #15803d;
-  --ok-light: #f0fdf4;
-  --ok-border: #86efac;
-  --unknown: #475569;
-  --unknown-light: #f1f5f9;
-  --shadow-sm: 0 2px 8px rgba(15, 29, 47, 0.06);
-  --shadow: 0 8px 32px rgba(15, 29, 47, 0.08);
-  --shadow-lg: 0 20px 48px rgba(15, 29, 47, 0.12);
-  --radius: 16px;
-  --radius-sm: 10px;
-  --radius-xs: 6px;
-  --radius-pill: 999px;
-  --transition: 0.2s ease;
+  /* ── Official Color Palette ── */
+  --official-bg: #f8fafc;        /* Slate-50 */
+  --official-card: #ffffff;      /* White */
+  --official-card-alt: #f1f5f9;  /* Slate-100 */
+  --official-input: #ffffff;
+  
+  --text-main: #0f172a;          /* Slate-900 (Authoritative Black) */
+  --text-secondary: #334155;     /* Slate-700 */
+  --text-muted: #64748b;         /* Slate-500 */
+  
+  --border: #cbd5e1;             /* Slate-300 */
+  --border-light: #e2e8f0;       /* Slate-200 */
+  --border-focus: #0f172a;       /* Focus state - Slate-900 */
+
+  /* ── Verdict/Status Colors (Strict) ── */
+  --verdict-safe: #15803d;       /* Green-700 */
+  --verdict-safe-bg: #dcfce7;    /* Green-100 */
+  --verdict-safe-border: #86efac;/* Green-300 */
+
+  --verdict-risk: #dc2626;       /* Red-600 */
+  --verdict-risk-bg: #fee2e2;    /* Red-100 */
+  --verdict-risk-border: #fca5a5;/* Red-300 */
+
+  --verdict-unknown: #475569;    /* Slate-600 */
+  --verdict-unknown-bg: #f1f5f9; /* Slate-100 */
+  --verdict-unknown-border: #cbd5e1; /* Slate-300 */
+
+  /* ── Brand/Action ── */
+  --brand-primary: #0f172a;      /* Slate-900 (Official/Gov style) */
+  --brand-action: #2563eb;       /* Blue-600 (Clear Action) */
+  --brand-action-hover: #1d4ed8; /* Blue-700 */
+
+  /* ── Shadows & Radius ── */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  --radius: 8px;                 /* Tighter, more administrative radius */
+  --radius-sm: 6px;
+  --radius-pill: 9999px;
+  
+  --font-heading: "Chakra Petch", monospace; /* Technical/Official */
+  --font-body: "DM Sans", sans-serif;        /* Readable/Modern */
+  
+  --transition: 0.15s ease-out; /* Snappy, responsive feel */
+
+  /* Backward-compatible aliases used by existing styles */
+  --bg-card: var(--official-card);
+  --bg-card-alt: var(--official-card-alt);
+  --bg-input: var(--official-input);
+  --accent: var(--brand-action);
+  --accent-strong: var(--brand-action-hover);
+  --accent-light: #dbeafe;
+  --danger: var(--verdict-risk);
+  --danger-bg: var(--verdict-risk-bg);
+  --danger-border: var(--verdict-risk-border);
+  --alert: #ea580c;
+  --alert-light: #fff7ed;
+  --ok: var(--verdict-safe);
+  --ok-light: var(--verdict-safe-bg);
+  --ok-border: var(--verdict-safe-border);
+  --unknown: var(--verdict-unknown);
+  --unknown-light: var(--verdict-unknown-bg);
+  --radius-xs: 4px;
 }
 
 * { box-sizing: border-box; }
@@ -38,11 +72,14 @@
 body {
   margin: 0;
   color: var(--text-main);
-  background: linear-gradient(165deg, #f5f1e8 0%, #eaf3fb 40%, #fef3e2 100%);
-  font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  background: var(--official-bg);
+  font-family: var(--font-body);
   min-height: 100vh;
-  line-height: 1.55;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* Subtle administrative background pattern */
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* ── Background decoration ── */
@@ -462,6 +499,31 @@ textarea {
   gap: 8px;
   margin-bottom: 16px;
 }
+.verdict-state-copy {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-light);
+  background: var(--unknown-light);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.verdict-state-copy--high {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: #991b1b;
+}
+.verdict-state-copy--unknown {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+.verdict-state-copy--legit {
+  background: var(--ok-light);
+  border-color: var(--ok-border);
+  color: #14532d;
+}
 .reason-card {
   display: flex;
   align-items: flex-start;
@@ -828,8 +890,10 @@ textarea {
   margin-top: 20px;
   animation: fadeSlideIn 0.35s ease;
 }
-.warning-links {
+.warning-actions {
   margin-bottom: 16px;
+  display: grid;
+  gap: 10px;
 }
 .warning-link-group {
   display: flex;
@@ -840,19 +904,81 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+.warning-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .warning-url {
+  flex: 1 1 280px;
+  min-width: 0;
   color: var(--accent);
   font-size: 0.88rem;
-  font-weight: 500;
+  font-weight: 600;
   word-break: break-all;
+}
+.warning-preview-shell {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+.warning-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.warning-preview-tag {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.warning-preview-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-family: "Chakra Petch", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--unknown-light);
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+.warning-preview-shell.warning-preview-shell--high .warning-preview-status {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: #b91c1c;
+}
+.warning-preview-shell.warning-preview-shell--legit .warning-preview-status {
+  background: var(--ok-light);
+  border-color: var(--ok-border);
+  color: #166534;
 }
 .warning-preview {
   width: 100%;
-  max-width: 600px;
   border-radius: var(--radius);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
+  background: #0f172a;
+}
+.warning-preview-note {
+  margin: 10px 2px 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 /* ── Heatmap ── */
@@ -988,6 +1114,36 @@ textarea {
   .progress-header { flex-direction: column; gap: 2px; }
 
   .toast-container { bottom: 12px; right: 12px; left: 12px; }
+  .toast { text-align: center; }
+
+  .textarea-wrap .btn-copy {
+    position: static;
+    margin-top: 8px;
+  }
+
+  .heatmap-table {
+    min-width: 560px;
+  }
+
+  .warning-action-row .btn {
+    flex: 1 1 140px;
+  }
+
+  .warning-preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 10px 8px 40px; }
+  .card { padding: 16px 12px; }
+  h2 { font-size: 1.2rem; }
+  .btn-lg { width: 100%; padding: 12px 16px; }
+  .verdict-result { padding: 14px; }
+  .warning-preview-shell { padding: 10px; }
+  .warning-url { font-size: 0.82rem; }
+  .tab-btn { padding: 8px 10px; }
 }
 
 /* ── Scroll behavior ── */

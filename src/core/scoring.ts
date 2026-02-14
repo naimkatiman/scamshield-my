@@ -1,4 +1,5 @@
 import type { NormalizedSignal, ProviderSignal, VerdictResult } from "../types";
+import { nextActionsForVerdict } from "./verdictRules";
 
 /* ------------------------------------------------------------------ */
 /*  Normalization                                                      */
@@ -156,12 +157,7 @@ export function computeVerdict(normalizedSignals: NormalizedSignal[]): VerdictRe
         ? "LEGIT"
         : "UNKNOWN";
 
-  const nextActions =
-    verdict === "HIGH_RISK"
-      ? ["Emergency Playbook", "Generate Reports", "Create Warning Card"]
-      : verdict === "UNKNOWN"
-        ? ["Report It", "Generate Warning Card", "Safety Checklist"]
-        : ["Safety Checklist", "Verify Official Channels", "Monitor Activity"];
+  const nextActions = nextActionsForVerdict(verdict);
 
   const sources = Array.from(new Set(normalizedSignals.map((s) => s.source)));
 

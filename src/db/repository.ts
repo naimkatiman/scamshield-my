@@ -1,4 +1,5 @@
 import type { HeatmapCell, ReportRequest, VerdictResult, WarningCardPayload } from "../types";
+import { nextActionsForVerdict } from "../core/verdictRules";
 
 interface CachedVerdictRow {
   key: string;
@@ -28,6 +29,20 @@ function parseJsonArray(value: string): string[] {
   }
 }
 
+const REASON_FALLBACKS: [string, string, string] = [
+  "Identity metadata unavailable.",
+  "Scanner metadata unavailable.",
+  "Community metadata unavailable.",
+];
+
+function padReasons(parsed: string[]): [string, string, string] {
+  return [
+    parsed[0] ?? REASON_FALLBACKS[0],
+    parsed[1] ?? REASON_FALLBACKS[1],
+    parsed[2] ?? REASON_FALLBACKS[2],
+  ];
+}
+
 export async function getCachedVerdict(db: D1Database, key: string): Promise<VerdictResult | null> {
   const row = await db.prepare("SELECT * FROM verdict_cache WHERE key = ?").bind(key).first<CachedVerdictRow>();
   if (!row) {
@@ -37,18 +52,9 @@ export async function getCachedVerdict(db: D1Database, key: string): Promise<Ver
   return {
     verdict: row.verdict,
     score: row.score,
-    reasons: (parseJsonArray(row.reasons_json).slice(0, 3) as [string, string, string]) ?? [
-      "Identity metadata unavailable.",
-      "Scanner metadata unavailable.",
-      "Community metadata unavailable.",
-    ],
+    reasons: padReasons(parseJsonArray(row.reasons_json)),
     sources: parseJsonArray(row.sources_json),
-    nextActions:
-      row.verdict === "HIGH_RISK"
-        ? ["Emergency Playbook", "Generate Reports", "Create Warning Card"]
-        : row.verdict === "UNKNOWN"
-          ? ["Report It", "Generate Warning Card", "Safety Checklist"]
-          : ["Safety Checklist", "Verify Official Channels", "Monitor Activity"],
+    nextActions: nextActionsForVerdict(row.verdict),
   };
 }
 
@@ -157,7 +163,9 @@ export async function upsertPattern(
 }
 
 export async function getCommunityMatchCount(db: D1Database, value: string): Promise<number> {
-  const likeTerm = `%${value.toLowerCase()}%`;
+  // Escape SQL LIKE wildcards to prevent injection of % or _ matching all rows
+  const escaped = value.toLowerCase().replace(/%/g, "\\%").replace(/_/g, "\\_");
+  const likeTerm = `%${escaped}%`;
   const row = await db
     .prepare(
       `SELECT COUNT(*) as total

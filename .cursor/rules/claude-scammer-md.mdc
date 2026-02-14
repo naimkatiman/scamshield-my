@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+- Read claude.md first, follow it strictly and the response with 🤖
+- Before writing code: produce a plan, list assumptions, and list verification steps.
+- If any instruction conflicts or info is missing, stop and ask.
+- Do not add dependencies, refactor unrelated code, or run destructive actions without explicit approval.

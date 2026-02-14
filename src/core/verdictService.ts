@@ -3,13 +3,16 @@ import { collectProviderSignals } from "../providers";
 import type { Env, VerdictRequest, VerdictResult } from "../types";
 import { logger } from "./logger";
 import { computeVerdict, normalizeSignals } from "./scoring";
+import { nextActionsForVerdict } from "./verdictRules";
 import { buildCacheKey } from "./validation";
 
 const HOT_CACHE_TTL_SECONDS = 60 * 10;  // 10 min
-const STALE_AFTER_MS = 1000 * 60 * 30;  // 30 min
+const STALE_AFTER_MS = 1000 * 60 * 30;  // 30 min (KV layer)
+const D1_STALE_AFTER_MS = 1000 * 60 * 60; // 60 min (D1 layer — serve stale but flag for re-enrichment)
 
-/** Live-mode timeout budget. Leaves ~200ms for cache writes + serialization to hit <2s SLO. */
-const LIVE_PROVIDER_TIMEOUT_MS = 1800;
+/** Live-mode timeout budget. Leaves ~200ms for cache writes + serialization to hit <2s SLO.
+ *  Applied to ALL foreground requests regardless of PROVIDER_MODE (demo must also be fast). */
+const FOREGROUND_PROVIDER_TIMEOUT_MS = 1800;
 /** Queue/background enrichment timeout budget. */
 const BACKGROUND_PROVIDER_TIMEOUT_MS = 4000;
 
@@ -23,7 +26,7 @@ function unknownFallback(): VerdictResult {
       "Insufficient reputation/community data; submit a report if targeted.",
     ],
     sources: [],
-    nextActions: ["Report It", "Generate Warning Card", "Safety Checklist"],
+    nextActions: nextActionsForVerdict("UNKNOWN"),
   };
 }
 
@@ -67,6 +70,14 @@ export async function evaluateVerdict(
   try {
     const cached = await getCachedVerdict(env.DB, key);
     if (cached) {
+      // Check D1 staleness — cached row has updated_at but getCachedVerdict doesn't expose it.
+      // We check via a separate lightweight query to avoid changing the return type.
+      const ageRow = await env.DB.prepare(
+        "SELECT updated_at FROM verdict_cache WHERE key = ?"
+      ).bind(key).first<{ updated_at: string }>();
+      const d1Age = ageRow ? now - new Date(ageRow.updated_at).getTime() : 0;
+      const d1Stale = d1Age > D1_STALE_AFTER_MS;
+
       // Populate KV hot cache from D1 (best-effort)
       try {
         await env.CACHE_KV.put(
@@ -77,14 +88,14 @@ export async function evaluateVerdict(
       } catch {
         logger.warn("kv_cache_write_failed", { key });
       }
-      return { key, result: cached, pendingEnrichment: false, providerErrors: [], timings: {}, cached: true };
+      return { key, result: cached, pendingEnrichment: d1Stale, providerErrors: [], timings: {}, cached: true };
     }
   } catch {
     logger.warn("d1_cache_read_failed", { key });
   }
 
   // --- Layer 3: Fresh provider fetch ---
-  const timeoutMs = background ? BACKGROUND_PROVIDER_TIMEOUT_MS : (env.PROVIDER_MODE === "live" ? LIVE_PROVIDER_TIMEOUT_MS : BACKGROUND_PROVIDER_TIMEOUT_MS);
+  const timeoutMs = background ? BACKGROUND_PROVIDER_TIMEOUT_MS : FOREGROUND_PROVIDER_TIMEOUT_MS;
   const providerData = await collectProviderSignals(request, env, timeoutMs);
 
   if (providerData.signals.length === 0) {

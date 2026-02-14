@@ -83,12 +83,12 @@ describe("renderWarningCardSvg", () => {
 
   it("uses correct palette for HIGH_RISK", () => {
     const svg = renderWarningCardSvg({ ...payload, verdict: "HIGH_RISK" });
-    expect(svg).toContain("#D9480F");
+    expect(svg).toContain("#B91C1C");
   });
 
   it("uses correct palette for LEGIT", () => {
     const svg = renderWarningCardSvg({ ...payload, verdict: "LEGIT" });
-    expect(svg).toContain("#1C7C54");
+    expect(svg).toContain("#166534");
   });
 
   it("uses correct palette for UNKNOWN", () => {

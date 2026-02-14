@@ -5,7 +5,7 @@ import { checkRateLimit } from "./core/rateLimit";
 import { logger } from "./core/logger";
 import { KILLER_PITCH_LINE, calculateRecoveryProgress, emergencyPlaybook, recoveryTasks } from "./core/playbook";
 import { generateIncidentReports } from "./core/reportGenerator";
-import { evaluateVerdict } from "./core/verdictService";
+import * as verdictService from "./core/verdictService";
 import { generateSlug, storeWarningCard } from "./core/warningCard";
 import { fingerprintFromIdentifiers, validateChain, validateInput, validateSlug } from "./core/validation";
 import type { Env, QueueMessage, ReportRequest, WarningCardPayload } from "./types";
@@ -84,22 +84,35 @@ function buildWarningHtml(
   identifiers: Record<string, string>,
   reasons: string[],
 ): string {
-  const badgeColor = verdict === "HIGH_RISK" ? "#dc2626" : verdict === "LEGIT" ? "#15803d" : "#475569";
-  const badgeBg = verdict === "HIGH_RISK" ? "rgba(220,38,38,0.15)" : verdict === "LEGIT" ? "rgba(21,128,61,0.15)" : "rgba(71,85,105,0.15)";
-  const borderColor = verdict === "HIGH_RISK" ? "#fca5a5" : verdict === "LEGIT" ? "#86efac" : "#94a3b8";
+  /* ── Official Warning Card Design ── */
+  const cardBg = "#ffffff";
+  const cardBorder = "#cbd5e1";
+
+  // Strict colors matching styles.css
+  const colors = {
+    HIGH_RISK: { bg: "#fee2e2", text: "#dc2626", border: "#fca5a5" }, // Red-100/600/300
+    LEGIT: { bg: "#dcfce7", text: "#15803d", border: "#86efac" },     // Green-100/700/300
+    UNKNOWN: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" }    // Slate-100/600/300
+  };
+
+  const theme = colors[verdict as keyof typeof colors] || colors.UNKNOWN;
   const safeHeadline = escapeHtml(headline);
   const safeVerdict = escapeHtml(verdict);
+  const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
 
   const identifierHtml = Object.entries(identifiers)
     .slice(0, 4)
-    .map(([key, value]) => `<div class="id-row"><span class="id-key">${escapeHtml(key)}</span><span class="id-val">${escapeHtml(value)}</span></div>`)
-    .join("");
+    .map(([key, value]) => `
+      <div class="id-row">
+        <span class="id-key">${escapeHtml(key)}</span>
+        <span class="id-val">${escapeHtml(value)}</span>
+      </div>`).join("");
 
-  const reasonsHtml = reasons.slice(0, 3).map((reason, i) =>
-    `<div class="reason"><span class="reason-num">${i + 1}</span><span>${escapeHtml(reason)}</span></div>`
-  ).join("");
-
-  const timestamp = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const reasonsHtml = reasons.slice(0, 3).map((reason, i) => `
+    <div class="reason">
+      <span class="reason-num">${i + 1}</span>
+      <span>${escapeHtml(reason)}</span>
+    </div>`).join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -108,78 +121,181 @@ function buildWarningHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${safeHeadline} - ${escapeHtml(appName)} Warning</title>
   <meta property="og:title" content="${safeHeadline}">
-  <meta property="og:description" content="Community scam warning from ScamShield MY. ${safeVerdict} verdict with evidence.">
+  <meta property="og:description" content="Community scam warning from ScamShield MY. Verdict: ${safeVerdict}.">
   <meta property="og:image" content="/api/warning-card/image/${slug}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${safeHeadline}">
-  <meta name="twitter:description" content="Community scam warning from ScamShield MY">
-  <meta name="twitter:image" content="/api/warning-card/image/${slug}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    /* Inlined Official Design Tokens */
     *{box-sizing:border-box}
-    body{margin:0;font-family:"DM Sans","Segoe UI",system-ui,sans-serif;background:#0a0f1a;color:#e2e8f0;min-height:100vh}
-    .wrap{max-width:680px;margin:0 auto;padding:24px 16px 48px}
-    .header{display:flex;align-items:center;gap:10px;margin-bottom:24px}
-    .shield{font-size:1.4rem}
-    .brand{font-family:"Chakra Petch",monospace;font-weight:700;font-size:0.85rem;color:#94a3b8;letter-spacing:0.1em;text-transform:uppercase}
-    .badge{display:inline-flex;align-items:center;padding:10px 22px;border-radius:10px;font-family:"Chakra Petch",monospace;font-weight:700;font-size:1.3rem;letter-spacing:0.06em;color:${badgeColor};background:${badgeBg};border:2px solid ${borderColor};margin-bottom:16px}
-    h1{font-family:"Chakra Petch",monospace;font-size:clamp(1.4rem,3vw,2rem);font-weight:700;margin:0 0 8px;line-height:1.25;color:#f8fafc}
-    .subtitle{color:#94a3b8;font-size:0.9rem;line-height:1.5;margin:0 0 24px}
-    .panel{background:#111827;border:1px solid #1e293b;border-radius:14px;padding:18px 20px;margin-bottom:14px}
-    .panel-title{font-family:"Chakra Petch",monospace;font-weight:600;font-size:0.78rem;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px}
-    .id-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1e293b}
-    .id-row:last-child{border-bottom:none}
-    .id-key{font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;min-width:60px}
-    .id-val{font-family:monospace;font-size:0.88rem;color:#e2e8f0;word-break:break-all}
-    .reason{display:flex;align-items:flex-start;gap:10px;padding:8px 0;font-size:0.88rem;color:#cbd5e1;line-height:1.45}
-    .reason-num{flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(5,102,141,0.2);color:#7dd3fc;font-weight:700;font-size:0.7rem}
-    .cta{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-    .cta-text{color:#94a3b8;font-size:0.88rem;margin:0}
-    .cta-link{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:999px;background:#05668d;color:#fff;font-weight:600;font-size:0.88rem;text-decoration:none;transition:background 0.2s}
-    .cta-link:hover{background:#028090}
-    .footer{margin-top:24px;padding-top:16px;border-top:1px solid #1e293b;display:flex;justify-content:space-between;color:#475569;font-size:0.75rem}
-    .legal{color:#475569;font-size:0.75rem;font-style:italic;margin-top:16px}
-    @media(max-width:500px){.wrap{padding:16px 12px 32px}.badge{font-size:1.1rem;padding:8px 16px}}
+    body {
+      margin:0;
+      font-family:"DM Sans",system-ui,sans-serif;
+      background:#f8fafc;
+      color:#0f172a;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:20px;
+    }
+    .card {
+      background:${cardBg};
+      border:1px solid ${cardBorder};
+      border-radius:12px;
+      box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);
+      width:100%;
+      max-width:600px;
+      padding:32px;
+      position:relative;
+      overflow:hidden;
+    }
+    .card::before {
+      content:'';
+      position:absolute;
+      top:0;left:0;bottom:0;width:6px;
+      background:${theme.text};
+    }
+    .header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      margin-bottom:24px;
+      padding-left:16px;
+    }
+    .brand {
+      font-family:"Chakra Petch",monospace;
+      font-weight:700;
+      font-size:0.9rem;
+      color:#64748b;
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+    }
+    .badge {
+      font-family:"Chakra Petch",monospace;
+      font-weight:700;
+      font-size:1.1rem;
+      padding:6px 16px;
+      background:${theme.bg};
+      color:${theme.text};
+      border-radius:4px;
+      border:1px solid ${theme.border};
+      text-transform:uppercase;
+    }
+    h1 {
+      font-family:"Chakra Petch",monospace;
+      font-size:1.75rem;
+      font-weight:700;
+      line-height:1.2;
+      margin:0 0 12px;
+      padding-left:16px;
+    }
+    .subtitle {
+      color:#475569;
+      font-size:1rem;
+      margin:0 0 24px;
+      padding-left:16px;
+      line-height:1.5;
+    }
+    .section {
+      background:#f1f5f9;
+      border-radius:8px;
+      padding:16px;
+      margin-bottom:16px;
+      margin-left:16px;
+    }
+    .label {
+      font-size:0.75rem;
+      font-weight:700;
+      text-transform:uppercase;
+      color:#64748b;
+      margin-bottom:8px;
+    }
+    .id-row {
+      display:flex;
+      justify-content:space-between;
+      padding:6px 0;
+      border-bottom:1px solid #e2e8f0;
+      font-size:0.9rem;
+    }
+    .id-row:last-child { border-bottom:none; }
+    .id-key { color:#64748b; font-weight:500; }
+    .id-val { font-family:monospace; color:#0f172a; font-weight:600; }
+    
+    .reason {
+      display:flex;
+      gap:12px;
+      margin-bottom:8px;
+      align-items:baseline;
+    }
+    .reason-num {
+      background:#0f172a;
+      color:white;
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:0.75rem;
+      font-weight:700;
+      flex-shrink:0;
+    }
+    
+    .cta {
+      margin-top:24px;
+      padding-left:16px;
+    }
+    .btn {
+      display:inline-block;
+      background:#0f172a;
+      color:white;
+      padding:12px 24px;
+      border-radius:6px;
+      font-weight:700;
+      text-decoration:none;
+      font-size:0.95rem;
+    }
+    .footer {
+      margin-top:32px;
+      padding-top:16px;
+      border-top:1px solid #e2e8f0;
+      padding-left:16px;
+      display:flex;
+      justify-content:space-between;
+      font-size:0.75rem;
+      color:#94a3b8;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="card">
     <div class="header">
-      <span class="shield">&#x1F6E1;</span>
-      <span class="brand">${escapeHtml(appName)}</span>
+      <div class="brand">ScamShield MY // Official Warning</div>
+      <div class="badge">${safeVerdict}</div>
     </div>
-
-    <div class="badge">${safeVerdict}</div>
+    
     <h1>${safeHeadline}</h1>
     <p class="subtitle">${escapeHtml(KILLER_PITCH_LINE)}</p>
 
-    <div class="panel">
-      <p class="panel-title">Identifiers</p>
+    <div class="section">
+      <div class="label">Target Identifier</div>
       ${identifierHtml}
     </div>
 
-    <div class="panel">
-      <p class="panel-title">Evidence</p>
+    <div class="section" style="background:white; border:1px solid #e2e8f0;">
+      <div class="label">Evidence Summary</div>
       ${reasonsHtml}
     </div>
 
-    <div class="panel">
-      <div class="cta">
-        <p class="cta-text">Take action now. Open the Emergency Playbook and generate copy-ready reports for bank, police, and platform.</p>
-        <a href="/" class="cta-link">Open ScamShield MY</a>
-      </div>
+    <div class="cta">
+      <a href="/" class="btn">View Full Report & Emergency Playbook</a>
     </div>
 
-    <p class="legal">ScamShield MY does not promise fund recovery. We provide fast containment and reporting pathways.</p>
-
     <div class="footer">
-      <span>Generated ${timestamp} UTC</span>
-      <span>${escapeHtml(appName)}</span>
+      <span>Generated: ${timestamp}</span>
+      <span>scamshield.my</span>
     </div>
   </div>
 </body>
@@ -187,8 +303,31 @@ function buildWarningHtml(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Middleware: rate limiting + payload size guard                      */
+/*  Middleware: CORS + rate limiting + payload size guard               */
 /* ------------------------------------------------------------------ */
+
+app.use("*", async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+  if (!path.startsWith("/api/")) {
+    return next();
+  }
+
+  // Handle CORS preflight
+  if (c.req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
+  c.header("Access-Control-Allow-Origin", "*");
+  return next();
+});
 
 app.use("*", async (c, next) => {
   const path = new URL(c.req.url).pathname;
@@ -269,7 +408,7 @@ app.post("/api/verdict", async (c) => {
     }
   }
 
-  const evaluated = await evaluateVerdict(parsed.data, c.env);
+  const evaluated = await verdictService.evaluateVerdict(parsed.data, c.env);
 
   if (evaluated.pendingEnrichment) {
     try {
@@ -437,7 +576,7 @@ app.get("/api/warning-card/image/:slug", async (c) => {
 
   return new Response(object.body, {
     headers: {
-      "Content-Type": object.httpMetadata?.contentType ?? "image/png",
+      "Content-Type": object.httpMetadata?.contentType ?? "image/svg+xml",
       "Cache-Control": "public, max-age=300",
     },
   });
@@ -513,7 +652,7 @@ async function processQueueMessage(env: Env, message: QueueMessage): Promise<voi
       return;
     }
 
-    await evaluateVerdict({ type, value, chain: typeof chain === "string" ? chain : undefined }, env, /* background */ true);
+    await verdictService.evaluateVerdict({ type, value, chain: typeof chain === "string" ? chain : undefined }, env, /* background */ true);
     return;
   }
 

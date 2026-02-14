@@ -88,6 +88,7 @@
         </div>
 
         <div id="verdict-reasons" class="verdict-reasons"></div>
+        <p id="verdict-state-copy" class="verdict-state-copy hidden"></p>
 
         <div class="verdict-cta-block">
           <p class="cta-label">Next steps:</p>
@@ -304,18 +305,32 @@
       </form>
 
       <div id="warning-output" class="warning-output hidden">
-        <div class="warning-links">
+        <div class="warning-actions">
           <div class="warning-link-group">
             <span class="form-label">Warning Page</span>
             <div class="link-copy-row">
-              <a id="warning-page-link" href="#" target="_blank" class="warning-url"></a>
-              <button id="copy-warning-url" class="btn-copy btn-copy--inline" title="Copy link">
+              <a id="warning-page-link" href="#" target="_blank" rel="noopener noreferrer" class="warning-url"></a>
+              <button id="copy-warning-url" class="btn-copy btn-copy--inline" title="Copy warning page link">
                 <span class="copy-icon">&#128203;</span>
+                <span class="copy-label">Copy</span>
               </button>
             </div>
           </div>
+          <div class="warning-action-row">
+            <a id="open-warning-page" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Open Page</a>
+            <a id="open-warning-image" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Open Image</a>
+            <button id="share-warning" class="btn btn-sm" type="button">Share</button>
+          </div>
         </div>
-        <img id="warning-preview" alt="Warning card preview" class="warning-preview">
+        <div id="warning-preview-shell" class="warning-preview-shell">
+          <div class="warning-preview-header">
+            <span class="warning-preview-tag">Community Alert Bulletin</span>
+            <span id="warning-preview-status" class="warning-preview-status">UNKNOWN</span>
+          </div>
+          <img id="warning-preview" alt="Warning card preview" class="warning-preview">
+          <p class="warning-preview-note">Forward responsibly: include only scam-relevant identifiers and evidence.</p>
+        </div>
+        <p id="warning-meta" class="meta"></p>
       </div>
     </section>
 

@@ -1,0 +1,276 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: 🛡
+      - generic [ref=e6]: ScamShield MY
+    - heading "Got scammed? Start treatment in 15 minutes." [level=1] [ref=e7]:
+      - text: Got scammed?
+      - text: Start treatment in 15 minutes.
+    - paragraph [ref=e8]: "Most apps try to detect scams. We handle the part nobody solves: what to do after the scam happens - stop the bleeding, preserve evidence, generate reports, and contain the spread."
+    - navigation [ref=e9]:
+      - link "Check Suspect" [ref=e10] [cursor=pointer]:
+        - /url: "#verdict-section"
+      - link "Emergency Playbook" [ref=e11] [cursor=pointer]:
+        - /url: "#emergency-playbook"
+      - link "Generate Reports" [ref=e12] [cursor=pointer]:
+        - /url: "#report-generator"
+      - link "Recovery Checklist" [ref=e13] [cursor=pointer]:
+        - /url: "#recovery-checklist"
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]: "01"
+      - generic [ref=e17]:
+        - heading "One-Screen Verdict" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Paste a wallet, contract, or handle. Get an instant risk assessment.
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: Input Type
+          - combobox "Input Type" [ref=e24]:
+            - option "Token Contract (EVM)" [selected]
+            - option "Wallet Address (EVM)"
+            - option "Handle (Telegram / WhatsApp / IG)"
+        - generic [ref=e25]:
+          - generic [ref=e26]: Value
+          - textbox "Value" [ref=e27]:
+            - /placeholder: 0x... or @handle
+        - generic [ref=e28]:
+          - generic [ref=e29]: Chain
+          - textbox "Chain" [ref=e30]:
+            - /placeholder: eth
+      - button "Analyze Now" [ref=e31] [cursor=pointer]:
+        - generic [ref=e32]: Analyze Now
+  - generic [ref=e33]:
+    - generic [ref=e34]:
+      - generic [ref=e35]: "02"
+      - generic [ref=e36]:
+        - heading "Emergency Playbook Malaysia" [level=2] [ref=e37]:
+          - text: Emergency Playbook
+          - generic [ref=e38]: Malaysia
+        - paragraph [ref=e39]: Do these now. Every minute counts.
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]: ■
+          - heading "Stop the Bleeding" [level=3] [ref=e44]
+        - list [ref=e45]:
+          - listitem [ref=e46]:
+            - generic [ref=e47]: Call your bank's fraud hotline now. Request an immediate freeze on outgoing transfers. Ask for a case reference number.
+          - listitem [ref=e48]:
+            - generic [ref=e49]: Call NSRC at 997 (National Scam Response Centre, BNM). They coordinate inter-bank freezes across Malaysian banks.
+          - listitem [ref=e50]:
+            - generic [ref=e51]: Call your telco. Disable SIM swap, reset PIN/PUK, require in-person verification for changes.
+          - listitem [ref=e52]:
+            - generic [ref=e53]: Reset your email password first. Then rotate all linked bank, eWallet, and social media passwords. Enable app-based 2FA everywhere.
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]: 🔍
+          - heading "Collect Evidence" [level=3] [ref=e57]
+        - list [ref=e58]:
+          - listitem [ref=e59]:
+            - generic [ref=e60]: "Screenshot everything: chat messages, transfer receipts, wallet screens, scammer profiles, and payment instructions."
+          - listitem [ref=e61]:
+            - generic [ref=e62]: "On-chain: save transaction hashes, wallet addresses, token contract addresses, and block explorer URLs."
+          - listitem [ref=e63]:
+            - generic [ref=e64]: "Off-chain: record phone numbers, Telegram/WhatsApp/IG handles, domains, and recipient bank account numbers."
+          - listitem [ref=e65]:
+            - generic [ref=e66]: Write a timeline with exact dates and times. List every action you took, in order.
+    - generic [ref=e67]:
+      - generic [ref=e68]:
+        - generic [ref=e69]: 📜
+        - heading "Where to Report" [level=3] [ref=e70]
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - generic [ref=e73]: Bank / eWallet
+          - generic [ref=e74]:
+            - paragraph [ref=e75]: Bank fraud hotline + in-app dispute
+            - paragraph [ref=e76]: "State: unauthorized transfer under scam coercion. Provide transaction reference. Request recipient account freeze and escalation ticket number."
+        - generic [ref=e77]:
+          - generic [ref=e78]: Police
+          - generic [ref=e79]:
+            - paragraph [ref=e80]: PDRM CCID portal or nearest police station
+            - paragraph [ref=e81]: File under online fraud category. Attach your incident timeline and full evidence bundle. Get the report number.
+        - generic [ref=e82]:
+          - generic [ref=e83]: Platform
+          - generic [ref=e84]:
+            - paragraph [ref=e85]: Telegram / Meta / Instagram abuse report
+            - paragraph [ref=e86]: Report for impersonation or fraud. Include profile links, message screenshots, and a summary of victim impact.
+    - generic [ref=e87]:
+      - generic [ref=e88]: Pre-written report starter (copy and paste)
+      - generic [ref=e89]:
+        - textbox [ref=e90]: I am reporting a suspected scam incident and need urgent containment support. I can provide transaction references, screenshots, identifiers, and timeline upon request. Please escalate this case under fraud handling and provide a case/ticket reference.
+        - button "📋 Copy" [ref=e91] [cursor=pointer]:
+          - generic [ref=e92]: 📋
+          - generic [ref=e93]: Copy
+    - paragraph [ref=e94]: ScamShield MY does not promise fund recovery. We provide fast containment and reporting pathways.
+  - generic [ref=e95]:
+    - generic [ref=e96]:
+      - generic [ref=e97]: "03"
+      - generic [ref=e98]:
+        - heading "Auto-Generate Reports" [level=2] [ref=e99]
+        - paragraph [ref=e100]: Fill in once, get copy-ready reports for bank, police, and platform.
+    - generic [ref=e101]:
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]: Incident Title
+          - textbox "Incident Title" [ref=e105]:
+            - /placeholder: e.g. Fake investment coach on Telegram
+        - generic [ref=e106]:
+          - generic [ref=e107]: Scam Type
+          - textbox "Scam Type" [ref=e108]:
+            - /placeholder: Investment / Impersonation
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - generic [ref=e111]: Occurred At
+          - textbox "Occurred At" [ref=e112]:
+            - /placeholder: 2026-02-14 09:25 MYT
+        - generic [ref=e113]:
+          - generic [ref=e114]: Channel
+          - textbox "Channel" [ref=e115]:
+            - /placeholder: Telegram / WhatsApp / Instagram
+        - generic [ref=e116]:
+          - generic [ref=e117]: Estimated Loss
+          - textbox "Estimated Loss" [ref=e118]:
+            - /placeholder: MYR 3,500
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - generic [ref=e121]: Suspect Identifiers (comma separated)
+          - textbox "Suspect Identifiers (comma separated)" [ref=e122]:
+            - /placeholder: "@fakeadmin, 0xabc..."
+        - generic [ref=e123]:
+          - generic [ref=e124]: Actions Taken (comma separated)
+          - textbox "Actions Taken (comma separated)" [ref=e125]:
+            - /placeholder: Called bank, froze card
+      - generic [ref=e126]:
+        - generic [ref=e127]: Extra Notes (optional)
+        - textbox "Extra Notes (optional)" [ref=e128]:
+          - /placeholder: Any additional context about the incident
+      - button "Generate Templates" [ref=e129] [cursor=pointer]
+  - generic [ref=e130]:
+    - generic [ref=e131]:
+      - generic [ref=e132]: "04"
+      - generic [ref=e133]:
+        - heading "Damage Control Checklist" [level=2] [ref=e134]
+        - paragraph [ref=e135]: Track your containment progress. Each action reduces your exposure.
+    - generic [ref=e137]:
+      - generic [ref=e138]: 0% contained
+      - generic [ref=e139]: 0 / 6 actions
+    - list [ref=e141]:
+      - listitem [ref=e142]:
+        - checkbox [ref=e143] [cursor=pointer]
+        - generic [ref=e144]:
+          - generic [ref=e145]: Bank freeze request submitted
+          - paragraph [ref=e146]: Stops additional outgoing transfers if fraud controls can still intervene.
+        - generic [ref=e147]: +20%
+      - listitem [ref=e148]:
+        - checkbox [ref=e149] [cursor=pointer]
+        - generic [ref=e150]:
+          - generic [ref=e151]: Revoked token approvals (EVM)
+          - paragraph [ref=e152]: Prevents further wallet draining through existing approvals.
+        - generic [ref=e153]: +20%
+      - listitem [ref=e154]:
+        - checkbox [ref=e155] [cursor=pointer]
+        - generic [ref=e156]:
+          - generic [ref=e157]: Rotated passwords + enabled 2FA
+          - paragraph [ref=e158]: Cuts off account takeover paths used for follow-up scams.
+        - generic [ref=e159]: +20%
+      - listitem [ref=e160]:
+        - checkbox [ref=e161] [cursor=pointer]
+        - generic [ref=e162]:
+          - generic [ref=e163]: SIM lock / telco security enabled
+          - paragraph [ref=e164]: Reduces SIM swap risk and OTP interception.
+        - generic [ref=e165]: +15%
+      - listitem [ref=e166]:
+        - checkbox [ref=e167] [cursor=pointer]
+        - generic [ref=e168]:
+          - generic [ref=e169]: Evidence bundle prepared
+          - paragraph [ref=e170]: Improves bank/police/platform action speed and consistency.
+        - generic [ref=e171]: +15%
+      - listitem [ref=e172]:
+        - checkbox [ref=e173] [cursor=pointer]
+        - generic [ref=e174]:
+          - generic [ref=e175]: Shared warning card with contacts
+          - paragraph [ref=e176]: Contains spread by warning likely next victims in your network.
+        - generic [ref=e177]: +10%
+  - generic [ref=e178]:
+    - generic [ref=e179]:
+      - generic [ref=e180]: "05"
+      - generic [ref=e181]:
+        - 'heading "Containment: Warning Card" [level=2] [ref=e182]'
+        - paragraph [ref=e183]: Generate a shareable warning to protect others in your network.
+    - generic [ref=e184]:
+      - generic [ref=e185]:
+        - generic [ref=e186]:
+          - generic [ref=e187]: Verdict
+          - combobox "Verdict" [ref=e188]:
+            - option "HIGH RISK" [selected]
+            - option "UNKNOWN"
+            - option "LEGIT"
+        - generic [ref=e189]:
+          - generic [ref=e190]: Headline
+          - textbox "Headline" [ref=e191]:
+            - /placeholder: Potential scam campaign detected
+      - generic [ref=e192]:
+        - generic [ref=e193]:
+          - generic [ref=e194]: Primary Identifier
+          - textbox "Primary Identifier" [ref=e195]:
+            - /placeholder: 0x... or @handle
+        - generic [ref=e196]:
+          - generic [ref=e197]: Evidence bullets (separate with |)
+          - textbox "Evidence bullets (separate with |)" [ref=e198]:
+            - /placeholder: Canonical mismatch | Honeypot risk | 4 community reports
+      - button "Generate Warning Card" [ref=e199] [cursor=pointer]
+  - generic [ref=e200]:
+    - generic [ref=e201]:
+      - generic [ref=e202]: "06"
+      - generic [ref=e203]:
+        - heading "Scam Heatmap" [level=2] [ref=e204]
+        - paragraph [ref=e205]: "Live view: which platforms and scam types are trending in Malaysia."
+    - table [ref=e207]:
+      - rowgroup [ref=e208]:
+        - row "Platform Category Reports (7d) Trend" [ref=e209]:
+          - columnheader "Platform" [ref=e210]
+          - columnheader "Category" [ref=e211]
+          - columnheader "Reports (7d)" [ref=e212]
+          - columnheader "Trend" [ref=e213]
+      - rowgroup [ref=e214]:
+        - row "Telegram Investment 12 ↑" [ref=e215]:
+          - cell "Telegram" [ref=e216]
+          - cell "Investment" [ref=e217]:
+            - generic [ref=e218]: Investment
+          - cell "12" [ref=e219]
+          - cell "↑" [ref=e220]
+        - row "WhatsApp Phishing 9 ↑" [ref=e221]:
+          - cell "WhatsApp" [ref=e222]
+          - cell "Phishing" [ref=e223]:
+            - generic [ref=e224]: Phishing
+          - cell "9" [ref=e225]
+          - cell "↑" [ref=e226]
+        - row "Instagram Impersonation 7 →" [ref=e227]:
+          - cell "Instagram" [ref=e228]
+          - cell "Impersonation" [ref=e229]:
+            - generic [ref=e230]: Impersonation
+          - cell "7" [ref=e231]
+          - cell "→" [ref=e232]
+        - row "Web Airdrop 5 ↓" [ref=e233]:
+          - cell "Web" [ref=e234]
+          - cell "Airdrop" [ref=e235]:
+            - generic [ref=e236]: Airdrop
+          - cell "5" [ref=e237]
+          - cell "↓" [ref=e238]
+        - row "Facebook Romance 4 →" [ref=e239]:
+          - cell "Facebook" [ref=e240]
+          - cell "Romance" [ref=e241]:
+            - generic [ref=e242]: Romance
+          - cell "4" [ref=e243]
+          - cell "→" [ref=e244]
+        - row "Exchange Job 3 ↑" [ref=e245]:
+          - cell "Exchange" [ref=e246]
+          - cell "Job" [ref=e247]:
+            - generic [ref=e248]: Job
+          - cell "3" [ref=e249]
+          - cell "↑" [ref=e250]
+    - button "Refresh Heatmap" [ref=e251] [cursor=pointer]
+  - generic [ref=e252]:
+    - paragraph [ref=e253]: ScamShield MY does not promise fund recovery. We provide fast containment and reporting pathways.
+    - paragraph [ref=e254]: Built for Malaysian scam victims. Open-source community tool.
