@@ -23,6 +23,14 @@ export function VerdictFlow() {
   const [verdict, setVerdict] = useState<VerdictResponse | null>(navState?.verdict ?? null)
   const [inputMeta, setInputMeta] = useState<{ type: string; value: string }>(navState?.inputMeta ?? { type: '', value: '' })
   const recoveryRef = useRef<HTMLDivElement>(null)
+  const phaseOrder: Phase[] = ['input', 'loading', 'result', 'recovery']
+  const phaseLabels: Record<Phase, string> = {
+    input: t('flow.phase.input'),
+    loading: t('flow.phase.scan'),
+    result: t('verdict.result.title'),
+    recovery: t('flow.emergency.title'),
+  }
+  const currentPhaseIndex = phaseOrder.indexOf(phase)
 
   // Handle pre-loaded verdict from Landing page navigation
   useEffect(() => {
@@ -78,6 +86,32 @@ export function VerdictFlow() {
           {phase === 'result' && t('verdict.result.title')}
           {phase === 'recovery' && t('flow.emergency.title')}
         </h2>
+        <div className="mx-auto mt-5 flex max-w-2xl items-center justify-between gap-2">
+          {phaseOrder.map((step, index) => {
+            const active = index <= currentPhaseIndex
+            const complete = index < currentPhaseIndex
+
+            return (
+              <div key={step} className="flex min-w-0 flex-1 items-center gap-2">
+                <div
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] ${
+                    active
+                      ? 'border-cyber/40 bg-cyber/15 text-cyber'
+                      : 'border-white/10 bg-white/[0.02] text-slate-600'
+                  }`}
+                >
+                  {complete ? '✓' : index + 1}
+                </div>
+                <span className={`truncate font-mono text-[10px] uppercase tracking-wider ${active ? 'text-slate-300' : 'text-slate-600'}`}>
+                  {phaseLabels[step]}
+                </span>
+                {index < phaseOrder.length - 1 && (
+                  <div className={`hidden h-px flex-1 sm:block ${active ? 'bg-cyber/30' : 'bg-white/[0.08]'}`} />
+                )}
+              </div>
+            )
+          })}
+        </div>
       </motion.div>
 
       {/* Phase Content */}

@@ -198,6 +198,14 @@ export function Dashboard() {
       : 'Join ScamShield to help fight scam campaigns.'
   }, [referrals?.referralCode])
 
+  const sectionLinks = [
+    { id: 'dashboard-achievements', label: t('dashboard.jump.achievements') },
+    { id: 'dashboard-referrals', label: t('dashboard.jump.referrals') },
+    { id: 'dashboard-competition', label: t('dashboard.jump.competition') },
+    { id: 'dashboard-bounties', label: t('dashboard.jump.bounties') },
+    { id: 'dashboard-activity', label: t('dashboard.jump.activity') },
+  ] as const
+
   if (!isAuthenticated) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
@@ -308,6 +316,20 @@ export function Dashboard() {
         </Card>
       )}
 
+      <div className="overflow-x-auto pb-1">
+        <div className="inline-flex min-w-max gap-2">
+          {sectionLinks.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-slate-400 transition-all hover:border-cyber/30 hover:text-cyber"
+            >
+              {section.label}
+            </a>
+          ))}
+        </div>
+      </div>
+
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <Card variant="glow" className="p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -361,7 +383,7 @@ export function Dashboard() {
         </Card>
       </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div id="dashboard-achievements" className="grid scroll-mt-28 gap-6 lg:grid-cols-2">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <Card className="p-5 h-full">
             <div className="flex items-center gap-2 mb-4">
@@ -445,7 +467,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+        <motion.div id="dashboard-referrals" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="scroll-mt-28">
           <Card className="p-5 h-full">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -518,7 +540,7 @@ export function Dashboard() {
           </Card>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <motion.div id="dashboard-competition" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="scroll-mt-28">
           <Card className="p-5 h-full">
             <div className="flex items-center gap-2 mb-4">
               <Flag size={14} className="text-cyber/80" />
@@ -578,7 +600,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+        <motion.div id="dashboard-bounties" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="scroll-mt-28">
           <Card className="p-5 h-full">
             <div className="flex items-center gap-2 mb-4">
               <Crosshair size={14} className="text-cyber/80" />
@@ -616,7 +638,7 @@ export function Dashboard() {
           </Card>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <motion.div id="dashboard-feed" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="scroll-mt-28">
           <Card className="p-5 h-full">
             <div className="flex items-center gap-2 mb-4">
               <Gift size={14} className="text-cyber/80" />
@@ -666,7 +688,7 @@ export function Dashboard() {
         </motion.div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+      <motion.div id="dashboard-activity" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="scroll-mt-28">
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <History size={14} className="text-cyber/70" />

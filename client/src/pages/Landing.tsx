@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
-import { Bot, Search } from 'lucide-react'
+import { Bot, Search, Clock3, Languages, ShieldCheck, ArrowRight } from 'lucide-react'
 import { InlineAiChat } from '../components/landing/InlineAiChat'
 import { StatsPreview } from '../components/landing/StatsPreview'
 import { FeatureCards } from '../components/landing/FeatureCards'
@@ -26,6 +26,12 @@ export function Landing() {
   const { scrollYProgress } = useScroll()
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95])
+
+  const trustSignals = [
+    { icon: Clock3, label: t('landing.signal.fast') },
+    { icon: Languages, label: t('landing.signal.locale') },
+    { icon: ShieldCheck, label: t('landing.signal.recovery') },
+  ]
 
   const switchMode = (m: Mode) => {
     setMode(m)
@@ -87,6 +93,35 @@ export function Landing() {
             <p className="font-body text-base md:text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
               {mode === 'ai' ? t('hero.ai.subtitle') : t('landing.hero.subtitle')}
             </p>
+
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {trustSignals.map((signal) => (
+                <span
+                  key={signal.label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-slate-400"
+                >
+                  <signal.icon size={11} className="text-cyber/70" />
+                  {signal.label}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <button
+                onClick={() => navigate('/check')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-cyber/30 bg-cyber/10 px-4 py-2 font-mono text-xs text-cyber transition-all hover:bg-cyber/20"
+              >
+                <Search size={13} />
+                {t('landing.hero.cta_check')}
+                <ArrowRight size={12} />
+              </button>
+              <button
+                onClick={() => navigate('/intelligence')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]"
+              >
+                {t('landing.hero.cta_intel')}
+              </button>
+            </div>
           </motion.div>
 
           {/* Mode Toggle */}
@@ -96,12 +131,14 @@ export function Landing() {
             transition={{ delay: 0.15 }}
             className="flex justify-center mb-8"
           >
-            <div className="inline-flex rounded-xl bg-white/[0.03] border border-white/[0.06] p-1">
+            <div className="inline-flex rounded-xl border border-white/[0.06] bg-white/[0.03] p-1" role="tablist" aria-label="Scan mode">
               <button
                 onClick={() => switchMode('ai')}
+                role="tab"
+                aria-selected={mode === 'ai'}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 font-mono text-xs transition-all ${
                   mode === 'ai'
-                    ? 'bg-cyber/10 border border-cyber/20 text-cyber'
+                    ? 'border border-cyber/20 bg-cyber/10 text-cyber shadow-[0_0_0_1px_rgba(6,182,212,0.08)]'
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
@@ -110,9 +147,11 @@ export function Landing() {
               </button>
               <button
                 onClick={() => switchMode('manual')}
+                role="tab"
+                aria-selected={mode === 'manual'}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 font-mono text-xs transition-all ${
                   mode === 'manual'
-                    ? 'bg-cyber/10 border border-cyber/20 text-cyber'
+                    ? 'border border-cyber/20 bg-cyber/10 text-cyber shadow-[0_0_0_1px_rgba(6,182,212,0.08)]'
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
