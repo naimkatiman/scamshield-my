@@ -1,7 +1,9 @@
 import type { InputType } from "../types";
 
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
-const HANDLE_REGEX = /^[A-Za-z0-9._@-]{3,64}$/;
+const HANDLE_USERNAME_REGEX = /^@?[A-Za-z0-9._-]{3,64}$/;
+const HANDLE_PHONE_REGEX = /^\+?\d{8,15}$/;
+const HANDLE_URL_REGEX = /^https?:\/\/(t\.me|telegram\.me|wa\.me|whatsapp\.com|instagram\.com|facebook\.com|fb\.com|x\.com|twitter\.com)\/.+/i;
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,78}[a-z0-9]$/;
 
 export const SUPPORTED_CHAINS = [
@@ -16,6 +18,24 @@ export const SUPPORTED_CHAINS = [
   "solana",
 ] as const;
 
+function isValidHandleInput(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (HANDLE_USERNAME_REGEX.test(trimmed)) {
+    return true;
+  }
+
+  const compactPhone = trimmed.replace(/[\s-]/g, "");
+  if (HANDLE_PHONE_REGEX.test(compactPhone)) {
+    return true;
+  }
+
+  if (HANDLE_URL_REGEX.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function validateInput(type: InputType, value: string): { valid: boolean; reason?: string } {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -26,11 +46,11 @@ export function validateInput(type: InputType, value: string): { valid: boolean;
     return { valid: false, reason: "Invalid EVM address format." };
   }
 
-  if (type === "handle" && !HANDLE_REGEX.test(trimmed)) {
+  if (type === "handle" && !isValidHandleInput(trimmed)) {
     return {
       valid: false,
       reason:
-        "Invalid handle format. Use 3-64 chars with letters, numbers, '.', '_', '-', or '@'.",
+        "Invalid handle format. Use a social handle (e.g. @user), social URL, or phone number.",
     };
   }
 

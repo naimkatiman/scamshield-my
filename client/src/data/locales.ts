@@ -50,6 +50,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     'verdict.result.risk_score': 'Risk Score',
     'verdict.result.next_steps': 'Next steps:',
     'verdict.detected': 'Detected type',
+    'alerts.quick.title': 'Investor Alert Quick Database',
+    'alerts.quick.subtitle': 'Cross-check suspicious investment entities against SC Malaysia alerts before taking action.',
+    'alerts.quick.placeholder': 'Enter company, platform, or promoter name',
+    'alerts.quick.search': 'Quick Search',
+    'alerts.quick.open_full': 'Open full SC Investor Alert List',
 
     // Flow / Recovery Kit
     'flow.kit.generating': 'Generating your personalized recovery kit...',
@@ -151,6 +156,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     'verdict.result.risk_score': 'Skor Risiko',
     'verdict.result.next_steps': 'Langkah seterusnya:',
     'verdict.detected': 'Jenis dikesan',
+    'alerts.quick.title': 'Pangkalan Data Pantas Alert Pelabur',
+    'alerts.quick.subtitle': 'Semak entiti pelaburan mencurigakan dalam senarai amaran SC Malaysia sebelum bertindak.',
+    'alerts.quick.placeholder': 'Masukkan nama syarikat, platform, atau promoter',
+    'alerts.quick.search': 'Carian Pantas',
+    'alerts.quick.open_full': 'Buka senarai penuh SC Investor Alert List',
 
     // Flow / Recovery Kit
     'flow.kit.generating': 'Menjana kit pemulihan peribadi anda...',

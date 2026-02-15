@@ -6,6 +6,7 @@ import { InlineAiChat } from '../components/landing/InlineAiChat'
 import { StatsPreview } from '../components/landing/StatsPreview'
 import { FeatureCards } from '../components/landing/FeatureCards'
 import { VerdictInput } from '../components/verdict/VerdictInput'
+import { InvestorAlertQuickCheck } from '../components/verdict/InvestorAlertQuickCheck'
 import { ShieldLottie, TypewriterText } from '../components/effects'
 import { useLocale } from '../context/LocaleContext'
 import { useToast } from '../context/ToastContext'
@@ -143,6 +144,7 @@ export function Landing() {
                 className="space-y-6"
               >
                 <VerdictInput onSubmit={handleManualSubmit} loading={scanning} />
+                <InvestorAlertQuickCheck />
                 <p className="text-center font-mono text-[11px] text-slate-600">
                   {t('landing.trust')}
                 </p>

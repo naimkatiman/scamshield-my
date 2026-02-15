@@ -44,6 +44,15 @@ describe("validateInput", () => {
     expect(validateInput("handle", "@crypto_trader").valid).toBe(true);
   });
 
+
+  it("accepts handle as social URL", () => {
+    expect(validateInput("handle", "https://t.me/scamchannel").valid).toBe(true);
+  });
+
+  it("accepts handle as Malaysian phone number", () => {
+    expect(validateInput("handle", "+60123456789").valid).toBe(true);
+  });
+
   it("rejects handle shorter than 3 chars", () => {
     expect(validateInput("handle", "ab").valid).toBe(false);
   });
