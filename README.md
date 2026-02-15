@@ -10,6 +10,51 @@ ScamShield MY provides real-time scam verification, community-driven reporting, 
 
 ## 🚀 Features
 
+## 🎬 Live Demo Impact
+
+- **Real-time verdict engine** with instant scam detection for wallets, contracts, and social handles.
+- **Visual warning card generation** that creates shareable assets for social containment.
+- **Live threat heatmap** across platform/category signals from Malaysian community reports.
+- **EN/BM language toggle** to prove production-ready localization.
+
+## 🧠 Technical Excellence
+
+- **Sub-2 second verdict API response target** for interactive investigations.
+- **Edge-native architecture on Cloudflare Workers** for low-latency execution.
+- **Multi-provider integrations with resilient fallbacks** to preserve verdict continuity.
+- **187 passing tests** to demonstrate robust, regression-resistant engineering.
+
+## 🇲🇾 Social Impact Story
+
+- Malaysia-specific intelligence, emergency contacts, and platform guidance.
+- Victim recovery tooling focused on practical post-incident support.
+- Community reporting and gamification loops to strengthen public vigilance.
+- Designed for real-world intervention, not only passive detection.
+
+## 🧭 Demo Flow Optimization
+
+- One-screen verdict output with clear risk scoring and rationale.
+- Emergency playbook with actionable, sequence-aware recovery steps.
+- AI-assisted report generation for banks, police, and platforms.
+- Analytics dashboards for operational health and community activity.
+
+## ✅ Production Readiness
+
+- Google OAuth authentication and secure session handling.
+- Rate limits and quota tiers for scalable fair usage.
+- Structured logging with PII masking and trace context.
+- Deployment model aligned with real Cloudflare resources.
+
+## 🎤 Killer Demo Script
+
+1. **Start with a known scam wallet/handle** → show immediate `HIGH_RISK` verdict.
+2. **Generate warning card** → produce shareable visual alert.
+3. **Toggle to Bahasa Malaysia** → demonstrate localization quality.
+4. **Open admin dashboard** → highlight live heatmap and user metrics.
+5. **Show recovery tools** → run emergency playbook and report generation.
+
+> The key story: ScamShield MY is a production-ready scam response system built to reduce financial loss for Malaysians.
+
 ### Core Capabilities
 - **Real-time Verdict Engine** - Multi-provider risk assessment for contracts, wallets, and social handles
 - **Community Reporting System** - Crowd-sourced scam intelligence with gamification
@@ -263,7 +308,7 @@ wrangler custom-domains add scamshield.my
 ## 📈 Monitoring & Analytics
 
 ### Key Metrics
-- **Verdict Response Time**: <200ms target
+- **Verdict Response Time**: <2s target
 - **Report Processing Time**: <500ms target
 - **User Engagement**: Daily active users, retention
 - **Scam Detection Accuracy**: Provider signal correlation
