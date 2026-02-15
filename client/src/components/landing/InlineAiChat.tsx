@@ -11,6 +11,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   typing?: boolean
+  options?: Array<{ text: string; action: string }>
 }
 
 function simpleMarkdown(text: string): string {
@@ -106,6 +107,29 @@ export function InlineAiChat() {
       )
       const responseText = res.message || res.error || 'Error processing request.'
       await typeWords(responseText)
+      // Add options to the message after typing completes
+      if (res.options && res.options.length > 0) {
+        setMessages(prev => {
+          const updated = [...prev]
+          const last = updated[updated.length - 1]
+          if (last && last.role === 'assistant') {
+            updated[updated.length - 1] = { ...last, options: res.options }
+          }
+          return updated
+        })
+      }
+      
+      // Add options to the assistant message
+      if (res.options && res.options.length > 0) {
+        setMessages(prev => {
+          const updated = [...prev]
+          const last = updated[updated.length - 1]
+          if (last && last.role === 'assistant') {
+            updated[updated.length - 1] = { ...last, options: res.options }
+          }
+          return updated
+        })
+      }
     } catch (err) {
       setMessages(prev => {
         const updated = [...prev]
@@ -192,6 +216,32 @@ export function InlineAiChat() {
                     <span className="h-1.5 w-1.5 rounded-full bg-cyber/50 animate-bounce" style={{ animationDelay: '150ms' }} />
                     <span className="h-1.5 w-1.5 rounded-full bg-cyber/50 animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
+                )}
+                
+                {/* Render clickable options inside the bubble */}
+                {msg.role === 'assistant' && msg.options && msg.options.length > 0 && !msg.typing && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="flex flex-col gap-2 mt-3 pt-3 border-t border-white/[0.08]"
+                  >
+                    {msg.options.map((opt, idx) => (
+                      <motion.button
+                        key={idx}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 + idx * 0.08 }}
+                        whileHover={{ x: 3, scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleSend(opt.action)}
+                        disabled={sending}
+                        className="text-left px-3 py-2.5 rounded-lg border border-cyber/20 bg-cyber/[0.04] text-[12px] font-medium text-slate-300 hover:text-white hover:bg-cyber/10 hover:border-cyber/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {opt.text}
+                      </motion.button>
+                    ))}
+                  </motion.div>
                 )}
               </div>
               {msg.role === 'user' && (

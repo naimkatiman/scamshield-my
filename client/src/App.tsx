@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Background } from './components/layout/Background'
 import { Header } from './components/layout/Header'
@@ -9,6 +9,8 @@ import { VerdictFlow } from './pages/VerdictFlow'
 import { Intelligence } from './pages/Intelligence'
 import { Dashboard } from './pages/Dashboard'
 import { Leaderboard } from './pages/Leaderboard'
+import { CreativeShowcase } from './components/demo/CreativeShowcase'
+import { useAuth } from './context/AuthContext'
 
 const pageTransition = {
   initial: { opacity: 0, y: 20 },
@@ -19,6 +21,7 @@ const pageTransition = {
 
 export function App() {
   const location = useLocation()
+  const { user } = useAuth()
 
   return (
     <div className="relative min-h-screen">
@@ -28,6 +31,10 @@ export function App() {
       <main className="relative z-10">
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
+            <Route
+              path="/app"
+              element={<Navigate to={user ? "/dashboard" : "/"} replace />}
+            />
             <Route
               path="/"
               element={
@@ -65,6 +72,14 @@ export function App() {
               element={
                 <motion.div {...pageTransition}>
                   <Leaderboard />
+                </motion.div>
+              }
+            />
+            <Route
+              path="/showcase"
+              element={
+                <motion.div {...pageTransition}>
+                  <CreativeShowcase />
                 </motion.div>
               }
             />

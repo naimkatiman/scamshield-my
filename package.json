@@ -16,13 +16,14 @@
   "dependencies": {
     "hono": "^4.7.2",
     "jose": "^5.10.0",
+    "lottie-web": "^5.13.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260129.0",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
     "@vitest/coverage-v8": "^2.1.8",
-    "@cloudflare/workers-types": "^4.20260129.0",
     "eslint": "^8.57.1",
     "typescript": "^5.8.2",
     "vitest": "^2.1.8",

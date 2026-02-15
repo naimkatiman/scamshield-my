@@ -1,6 +1,7 @@
 /* ── ScamShield MY — One Killer Flow ── */
 import { ASCII_PATTERNS } from "./ascii-assets.js";
 import { translations } from "./locales.js";
+import { AnimationManager } from "./animations.js";
 
 /* ── State ── */
 
@@ -261,14 +262,15 @@ async function sendAiMessageFlow(userText, config) {
     if (options.length > 0 && bubble) {
       const optionsContainer = document.createElement("div");
       optionsContainer.className = "ai-options";
-      optionsContainer.style.cssText = "display: flex; flex-direction: column; gap: 8px; margin-top: 12px;";
 
       options.forEach(option => {
         const btn = document.createElement("button");
-        btn.className = "btn btn-sm btn-ghost";
-        btn.style.cssText = "text-align: left; justify-content: flex-start; white-space: normal;";
+        btn.className = "btn";
+        btn.type = "button";
         btn.textContent = option.text;
         btn.onclick = async () => {
+          // Disable all option buttons after click
+          optionsContainer.querySelectorAll("button").forEach(b => b.disabled = true);
           // Send the option action as the next user message
           if (config.messagesKey === "inlineMessages") {
             await sendInlineAiMessage(option.action);
@@ -1779,6 +1781,13 @@ async function boot() {
     };
     setVh();
     window.addEventListener("resize", setVh);
+
+    // Initialize animation system
+    const animManager = new AnimationManager();
+    animManager.initAll();
+    
+    // Store globally for cleanup if needed
+    window.scamshieldAnimations = animManager;
   });
 }
 

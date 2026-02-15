@@ -118,6 +118,7 @@ export const createWarningCard = (data: { verdict: string; headline: string; ide
 // AI Chat
 export interface ChatResponse {
   message: string
+  options?: Array<{ text: string; action: string }>
   error?: string
 }
 
