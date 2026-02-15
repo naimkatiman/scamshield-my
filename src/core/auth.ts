@@ -114,6 +114,8 @@ export async function verifyJWT(token: string, secret: string): Promise<Session 
 export interface GoogleAuthOptions {
   state?: string;
   codeChallenge?: string;
+  loginHint?: string;
+  forceAccountSelection?: boolean;
 }
 
 export async function createOAuthLoginContext(): Promise<{
@@ -128,13 +130,14 @@ export async function createOAuthLoginContext(): Promise<{
 }
 
 export function getGoogleAuthURL(env: Env, options: GoogleAuthOptions = {}): string {
+  const prompt = options.forceAccountSelection ? "select_account consent" : "select_account";
   const params = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,
     redirect_uri: env.GOOGLE_REDIRECT_URI,
     response_type: "code",
     scope: "openid email profile",
     access_type: "online",
-    prompt: "select_account",
+    prompt,
   });
 
   if (options.state) {
@@ -143,6 +146,12 @@ export function getGoogleAuthURL(env: Env, options: GoogleAuthOptions = {}): str
   if (options.codeChallenge) {
     params.set("code_challenge", options.codeChallenge);
     params.set("code_challenge_method", "S256");
+  }
+  if (options.loginHint) {
+    params.set("login_hint", options.loginHint);
+  }
+  if (options.forceAccountSelection) {
+    params.set("max_age", "0");
   }
 
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;

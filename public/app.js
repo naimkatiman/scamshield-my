@@ -236,6 +236,7 @@ async function sendAiMessageFlow(userText, config) {
       body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
     });
     const assistantText = data.message || data.error || "Error processing request.";
+    const options = data.options || [];
 
     bubble?.classList.add("typing-effect");
 
@@ -255,6 +256,34 @@ async function sendAiMessageFlow(userText, config) {
 
     messages.push({ role: "assistant", content: assistantText });
     bubble?.classList.remove("typing-effect");
+
+    // Render clickable options if provided
+    if (options.length > 0 && bubble) {
+      const optionsContainer = document.createElement("div");
+      optionsContainer.className = "ai-options";
+      optionsContainer.style.cssText = "display: flex; flex-direction: column; gap: 8px; margin-top: 12px;";
+
+      options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-sm btn-ghost";
+        btn.style.cssText = "text-align: left; justify-content: flex-start; white-space: normal;";
+        btn.textContent = option.text;
+        btn.onclick = async () => {
+          // Send the option action as the next user message
+          if (config.messagesKey === "inlineMessages") {
+            await sendInlineAiMessage(option.action);
+          } else {
+            await sendDrawerAiMessage(option.action);
+          }
+        };
+        optionsContainer.appendChild(btn);
+      });
+
+      bubble.appendChild(optionsContainer);
+    }
+
+    const container = $(config.containerId);
+    if (container) container.scrollTop = container.scrollHeight;
 
   } catch (error) {
     console.error(error);

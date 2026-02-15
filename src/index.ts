@@ -30,6 +30,7 @@ import {
   buildQuickActionResponse,
   enforceResponsePolicy,
   latestUserMessage,
+  type ChatResponse,
 } from "./core/aiChatPolicy";
 import { renderReportPdf } from "./core/reportPdf";
 import type { ReportPdfPayload } from "./core/reportPdf";
@@ -51,7 +52,7 @@ import {
   createCsrfToken,
   buildCsrfCookie,
 } from "./core/auth";
-import type { Env, HeatmapCell, QueueMessage, WarningCardPayload } from "./types";
+import type { Env, HeatmapCell, QueueMessage, VerdictResult, WarningCardPayload } from "./types";
 
 const MAX_BODY_BYTES = 65_536; // 64 KB
 
@@ -1129,14 +1130,14 @@ const aiChatSchema = z.object({
 async function resolveQuickActionReply(
   messages: { role: "user" | "assistant"; content: string }[],
   env: Env,
-): Promise<string | null> {
+): Promise<ChatResponse | null> {
   const userText = latestUserMessage(messages);
   const signals = analyzeChatInput(userText);
   if (signals.intent === "unknown") {
     return null;
   }
 
-  let verdict: Awaited<ReturnType<typeof verdictService.evaluateVerdict>>["result"] | null = null;
+  let verdict: VerdictResult | null = null;
   if (signals.intent === "check_wallet" && signals.walletAddress) {
     try {
       const evaluated = await verdictService.evaluateVerdict(
@@ -1155,13 +1156,13 @@ async function resolveQuickActionReply(
   if (!response) {
     return null;
   }
-  return enforceResponsePolicy(response, signals.language);
+  return response;
 }
 
 async function generateFallbackChatResponse(
   messages: { role: "user" | "assistant"; content: string }[],
   env: Env,
-): Promise<string> {
+): Promise<ChatResponse> {
   const quickActionResponse = await resolveQuickActionReply(messages, env);
   if (quickActionResponse) {
     return quickActionResponse;
@@ -1169,7 +1170,7 @@ async function generateFallbackChatResponse(
 
   const userText = latestUserMessage(messages);
   const signals = analyzeChatInput(userText);
-  return enforceResponsePolicy(buildFallbackEmergencyResponse(signals), signals.language);
+  return buildFallbackEmergencyResponse(signals);
 }
 
 app.post("/api/ai/chat", async (c) => {
@@ -1189,7 +1190,7 @@ app.post("/api/ai/chat", async (c) => {
     }
     const mockResponse = await generateFallbackChatResponse(parsed.data.messages, c.env);
     await new Promise((r) => setTimeout(r, 250));
-    return c.json({ message: mockResponse });
+    return c.json(mockResponse);
   }
 
   // ── Daily quota enforcement for AI chat ──
@@ -1208,7 +1209,7 @@ app.post("/api/ai/chat", async (c) => {
   const quickActionResponse = await resolveQuickActionReply(parsed.data.messages, c.env);
   if (quickActionResponse) {
     await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
-    return c.json({ message: quickActionResponse });
+    return c.json(quickActionResponse);
   }
 
   const messages = [
@@ -1243,9 +1244,9 @@ app.post("/api/ai/chat", async (c) => {
     if (response.ok) {
       const data = await response.json() as { choices?: { message?: { content?: string } }[] };
       const rawMessage = data.choices?.[0]?.message?.content || "I could not process this request.";
-      const message = enforceResponsePolicy(rawMessage, signals.language);
+      const chatResponse = enforceResponsePolicy(rawMessage, signals.language);
       await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
-      return c.json({ message });
+      return c.json(chatResponse);
     }
 
     lastStatus = response.status;
@@ -1259,7 +1260,7 @@ app.post("/api/ai/chat", async (c) => {
         return jsonError("AI provider authentication failed.", 502);
       }
       const mockResponse = await generateFallbackChatResponse(parsed.data.messages, c.env);
-      return c.json({ message: mockResponse });
+      return c.json(mockResponse);
     }
   }
 
@@ -1268,7 +1269,7 @@ app.post("/api/ai/chat", async (c) => {
   // Fall back to mock responses when all models fail and strict mode is off
   if (!strictAiMode) {
     const mockResponse = await generateFallbackChatResponse(parsed.data.messages, c.env);
-    return c.json({ message: mockResponse });
+    return c.json(mockResponse);
   }
 
   return jsonError("AI service unavailable. Try again shortly.", 502);
