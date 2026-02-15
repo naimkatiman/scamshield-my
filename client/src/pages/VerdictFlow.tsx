@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield } from 'lucide-react'
-import { VerdictInput } from '../components/verdict/VerdictInput'
-import { InvestorAlertQuickCheck } from '../components/verdict/InvestorAlertQuickCheck'
+import { ThreatScanner } from '../components/verdict/ThreatScanner'
 import { VerdictLoading } from '../components/verdict/VerdictLoading'
 import { VerdictResult } from '../components/verdict/VerdictResult'
 import { RecoveryKit } from '../components/recovery/RecoveryKit'
@@ -117,9 +116,8 @@ export function VerdictFlow() {
       {/* Phase Content */}
       <AnimatePresence mode="wait">
         {phase === 'input' && (
-          <motion.div key="input" exit={{ opacity: 0, y: -20 }} className="space-y-4">
-            <VerdictInput onSubmit={handleSubmit} loading={false} />
-            <InvestorAlertQuickCheck />
+          <motion.div key="input" exit={{ opacity: 0, y: -20 }}>
+            <ThreatScanner onSubmit={handleSubmit} loading={false} />
           </motion.div>
         )}
 

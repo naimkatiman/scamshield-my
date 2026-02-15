@@ -5,8 +5,7 @@ import { Bot, Search, Clock3, Languages, ShieldCheck, ArrowRight } from 'lucide-
 import { InlineAiChat } from '../components/landing/InlineAiChat'
 import { StatsPreview } from '../components/landing/StatsPreview'
 import { FeatureCards } from '../components/landing/FeatureCards'
-import { VerdictInput } from '../components/verdict/VerdictInput'
-import { InvestorAlertQuickCheck } from '../components/verdict/InvestorAlertQuickCheck'
+import { ThreatScanner } from '../components/verdict/ThreatScanner'
 import { ShieldLottie, TypewriterText } from '../components/effects'
 import { useLocale } from '../context/LocaleContext'
 import { useToast } from '../context/ToastContext'
@@ -180,11 +179,9 @@ export function Landing() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-6"
               >
-                <VerdictInput onSubmit={handleManualSubmit} loading={scanning} />
-                <InvestorAlertQuickCheck />
-                <p className="text-center font-mono text-[11px] text-slate-600">
+                <ThreatScanner onSubmit={handleManualSubmit} loading={scanning} />
+                <p className="mt-4 text-center font-mono text-[11px] text-slate-600">
                   {t('landing.trust')}
                 </p>
               </motion.div>
