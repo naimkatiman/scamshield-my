@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield } from 'lucide-react'
 import { VerdictInput } from '../components/verdict/VerdictInput'
@@ -14,10 +15,24 @@ type Phase = 'input' | 'loading' | 'result' | 'recovery'
 export function VerdictFlow() {
   const { t } = useLocale()
   const { toast } = useToast()
-  const [phase, setPhase] = useState<Phase>('input')
-  const [verdict, setVerdict] = useState<VerdictResponse | null>(null)
-  const [inputMeta, setInputMeta] = useState<{ type: string; value: string }>({ type: '', value: '' })
+  const location = useLocation()
+  const navState = location.state as { verdict?: VerdictResponse; inputMeta?: { type: string; value: string } } | null
+
+  const [phase, setPhase] = useState<Phase>(() => navState?.verdict ? 'result' : 'input')
+  const [verdict, setVerdict] = useState<VerdictResponse | null>(navState?.verdict ?? null)
+  const [inputMeta, setInputMeta] = useState<{ type: string; value: string }>(navState?.inputMeta ?? { type: '', value: '' })
   const recoveryRef = useRef<HTMLDivElement>(null)
+
+  // Handle pre-loaded verdict from Landing page navigation
+  useEffect(() => {
+    if (navState?.verdict) {
+      setVerdict(navState.verdict)
+      setInputMeta(navState.inputMeta ?? { type: '', value: '' })
+      setPhase('result')
+      // Clear navigation state to prevent re-triggering on refresh
+      window.history.replaceState({}, '')
+    }
+  }, [navState])
 
   const handleSubmit = async (type: string, value: string) => {
     setPhase('loading')

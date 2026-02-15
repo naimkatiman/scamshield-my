@@ -27,9 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const data = await authMe()
-      if (data.authenticated && data.user) {
-        setUser(data.user)
-        setQuota(data.quota ?? null)
+      if (data.authenticated && data.email) {
+        setUser({ email: data.email, role: data.role ?? 'user' })
+        setQuota(data.usage ? { used: data.usage.used, limit: data.usage.limit } : null)
       } else {
         setUser(null)
         setQuota(null)

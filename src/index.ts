@@ -1208,6 +1208,13 @@ app.post("/api/ai/chat", async (c) => {
   }
 
   logger.error("ai_chat_upstream_error", { status: lastStatus, error: lastError });
+
+  // Fall back to mock responses when all models fail and strict mode is off
+  if (!strictAiMode) {
+    const mockResponse = generateMockAiResponse(parsed.data.messages);
+    return c.json({ message: mockResponse });
+  }
+
   return jsonError("AI service unavailable. Try again shortly.", 502);
 });
 

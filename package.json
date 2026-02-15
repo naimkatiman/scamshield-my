@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev src/index.ts --local",
-    "deploy": "wrangler deploy",
+    "deploy": "cd client && npm run build && cd .. && wrangler deploy",
     "lint": "eslint . --ext .ts,.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

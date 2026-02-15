@@ -25,7 +25,15 @@ async function fetchJSON<T>(url: string, options: RequestInit = {}): Promise<T> 
 }
 
 // Auth
-export const authMe = () => fetchJSON<{ authenticated: boolean; user?: { email: string; role: string }; quota?: { used: number; limit: number } }>('/api/auth/me')
+export interface AuthMeResponse {
+  authenticated: boolean
+  email?: string
+  role?: string
+  usage?: { used: number; limit: number; remaining: number }
+  gamification?: { totalPoints: number; currentStreakDays: number; premiumUnlocked: boolean } | null
+}
+
+export const authMe = () => fetchJSON<AuthMeResponse>('/api/auth/me')
 export const authLogout = () => fetch('/api/auth/logout', { credentials: 'same-origin' })
 
 // Verdict
