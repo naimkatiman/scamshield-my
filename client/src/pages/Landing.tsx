@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Bot, Search, Shield } from 'lucide-react'
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
+import { Bot, Search } from 'lucide-react'
 import { InlineAiChat } from '../components/landing/InlineAiChat'
 import { StatsPreview } from '../components/landing/StatsPreview'
 import { FeatureCards } from '../components/landing/FeatureCards'
 import { VerdictInput } from '../components/verdict/VerdictInput'
 import { InvestorAlertQuickCheck } from '../components/verdict/InvestorAlertQuickCheck'
+import { ShieldLottie, TypewriterText } from '../components/effects'
 import { useLocale } from '../context/LocaleContext'
 import { useToast } from '../context/ToastContext'
 import { submitVerdict } from '../lib/api'
@@ -21,6 +22,10 @@ export function Landing() {
     return (localStorage.getItem('scamshield-mode') as Mode) || 'ai'
   })
   const [scanning, setScanning] = useState(false)
+  const [showTypewriter, setShowTypewriter] = useState(true)
+  const { scrollYProgress } = useScroll()
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95])
 
   const switchMode = (m: Mode) => {
     setMode(m)
@@ -49,17 +54,32 @@ export function Landing() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            style={{ opacity, scale }}
             className="text-center mb-8"
           >
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Shield size={16} className="text-cyber/60" />
+            <motion.div 
+              className="flex items-center justify-center gap-2 mb-4"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            >
+              <ShieldLottie size={20} className="opacity-60" />
               <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-cyber/50">
                 {t('nav.community_edition')}
               </span>
-            </div>
+            </motion.div>
             <h1 className="font-display text-3xl md:text-5xl font-bold tracking-tight text-white mb-4">
               {mode === 'ai' ? (
-                <span>{t('hero.ai.title')}</span>
+                showTypewriter ? (
+                  <TypewriterText 
+                    text={t('hero.ai.title')} 
+                    speed={60} 
+                    delay={400}
+                    onComplete={() => setShowTypewriter(false)}
+                  />
+                ) : (
+                  <span>{t('hero.ai.title')}</span>
+                )
               ) : (
                 <span className="gradient-text-cyber">{t('landing.hero.title')}</span>
               )}

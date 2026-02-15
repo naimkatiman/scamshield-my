@@ -149,6 +149,16 @@
     z-index: 10;
   }
 
+  .ascii-particle {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: rgba(6, 182, 212, 0.4);
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    will-change: transform, opacity;
+  }
+
   .grid-bg {
     background-image:
       linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),

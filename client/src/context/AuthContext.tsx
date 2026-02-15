@@ -44,11 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { refresh() }, [refresh])
 
   const login = useCallback(() => {
-    window.location.href = '/api/auth/login'
+    const loginUrl = new URL('/api/auth/login', window.location.origin)
+    loginUrl.searchParams.set('switch', '1')
+    // Cache-bust stale edge/browser redirects that may have cached SPA fallbacks.
+    loginUrl.searchParams.set('r', Date.now().toString(36))
+    window.location.assign(loginUrl.toString())
   }, [])
 
   const logout = useCallback(() => {
-    window.location.href = '/api/auth/logout'
+    window.location.assign('/api/auth/logout')
   }, [])
 
   return (

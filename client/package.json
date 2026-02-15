@@ -16,11 +16,17 @@
     "lucide-react": "^0.469.0",
     "lottie-react": "^2.4.0",
     "recharts": "^2.15.3",
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "gsap": "^3.12.5",
+    "three": "^0.169.0",
+    "@react-three/fiber": "^8.17.10",
+    "@react-three/drei": "^9.118.3",
+    "lenis": "^1.1.19"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.169.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.3",

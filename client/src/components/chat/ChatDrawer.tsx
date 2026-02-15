@@ -9,6 +9,7 @@ import { sendChatMessage } from '../../lib/api'
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  options?: Array<{ text: string; action: string }>
 }
 
 interface ChatDrawerProps {
@@ -18,6 +19,7 @@ interface ChatDrawerProps {
 const quickActions = [
   { key: 'ai.quick.scammed', icon: Sparkles },
   { key: 'ai.quick.check_wallet', icon: Sparkles },
+  { key: 'ai.quick.report', icon: Sparkles },
   { key: 'ai.quick.emergency', icon: Sparkles },
 ]
 
@@ -47,7 +49,11 @@ export function ChatDrawer({ onClose }: ChatDrawerProps) {
 
     try {
       const res = await sendChatMessage(updatedMessages.map(m => ({ role: m.role, content: m.content })))
-      setMessages(prev => [...prev, { role: 'assistant', content: res.message }])
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: res.message,
+        options: res.options || []
+      }])
     } catch (err) {
       toast('Chat failed. Try again.', 'error')
     } finally {
@@ -98,6 +104,32 @@ export function ChatDrawer({ onClose }: ChatDrawerProps) {
                     : line}
                 </p>
               ))}
+              
+              {/* Render clickable options inside the bubble */}
+              {msg.role === 'assistant' && msg.options && msg.options.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex flex-col gap-1.5 mt-2.5 pt-2.5 border-t border-white/[0.08]"
+                >
+                  {msg.options.map((opt, idx) => (
+                    <motion.button
+                      key={idx}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.25 + idx * 0.06 }}
+                      whileHover={{ x: 2, scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSend(opt.action)}
+                      disabled={sending}
+                      className="text-left px-2.5 py-2 rounded-md border border-cyber/20 bg-cyber/[0.04] text-[11px] font-medium text-slate-300 hover:text-white hover:bg-cyber/10 hover:border-cyber/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {opt.text}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
             </div>
             {msg.role === 'user' && (
               <div className="h-6 w-6 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">

@@ -42,13 +42,28 @@ export function registerAuthRoutes(app: Hono<{ Bindings: Env }>): void {
   /* -- Auth Routes (Google OAuth) -- */
 
   app.get("/api/auth/login", async (c) => {
+    const switchUser = /^(1|true|yes)$/i.test(c.req.query("switch") ?? "");
+    const loginHint = c.req.query("login_hint")?.trim();
     const oauth = await createOAuthLoginContext();
-    const url = getGoogleAuthURL(c.env, { state: oauth.state, codeChallenge: oauth.codeChallenge });
+    const url = getGoogleAuthURL(c.env, {
+      state: oauth.state,
+      codeChallenge: oauth.codeChallenge,
+      loginHint: loginHint || undefined,
+      forceAccountSelection: switchUser,
+    });
     const headers = new Headers({ Location: url });
-    appendSetCookies(headers, [
+    headers.set("Cache-Control", "no-store, max-age=0");
+
+    const cookies: string[] = [
       buildOAuthStateCookie(oauth.state),
       buildOAuthVerifierCookie(oauth.codeVerifier),
-    ]);
+    ];
+
+    if (switchUser) {
+      cookies.unshift(buildSessionClearCookie(), buildCsrfClearCookie());
+    }
+
+    appendSetCookies(headers, cookies);
     return new Response(null, { status: 302, headers });
   });
 

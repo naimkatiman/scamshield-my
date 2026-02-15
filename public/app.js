@@ -1,6 +1,7 @@
 /* ── ScamShield MY — One Killer Flow ── */
 import { ASCII_PATTERNS } from "./ascii-assets.js";
 import { translations } from "./locales.js";
+import { AnimationManager } from "./animations.js";
 
 /* ── State ── */
 
@@ -236,6 +237,7 @@ async function sendAiMessageFlow(userText, config) {
       body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
     });
     const assistantText = data.message || data.error || "Error processing request.";
+    const options = data.options || [];
 
     bubble?.classList.add("typing-effect");
 
@@ -255,6 +257,35 @@ async function sendAiMessageFlow(userText, config) {
 
     messages.push({ role: "assistant", content: assistantText });
     bubble?.classList.remove("typing-effect");
+
+    // Render clickable options if provided
+    if (options.length > 0 && bubble) {
+      const optionsContainer = document.createElement("div");
+      optionsContainer.className = "ai-options";
+
+      options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.type = "button";
+        btn.textContent = option.text;
+        btn.onclick = async () => {
+          // Disable all option buttons after click
+          optionsContainer.querySelectorAll("button").forEach(b => b.disabled = true);
+          // Send the option action as the next user message
+          if (config.messagesKey === "inlineMessages") {
+            await sendInlineAiMessage(option.action);
+          } else {
+            await sendDrawerAiMessage(option.action);
+          }
+        };
+        optionsContainer.appendChild(btn);
+      });
+
+      bubble.appendChild(optionsContainer);
+    }
+
+    const container = $(config.containerId);
+    if (container) container.scrollTop = container.scrollHeight;
 
   } catch (error) {
     console.error(error);
@@ -1750,6 +1781,13 @@ async function boot() {
     };
     setVh();
     window.addEventListener("resize", setVh);
+
+    // Initialize animation system
+    const animManager = new AnimationManager();
+    animManager.initAll();
+    
+    // Store globally for cleanup if needed
+    window.scamshieldAnimations = animManager;
   });
 }
 

@@ -24,6 +24,14 @@ import { checkRateLimit } from "./core/rateLimit";
 import { logger } from "./core/logger";
 import { KILLER_PITCH_LINE, calculateRecoveryProgress, emergencyPlaybook, recoveryTasks } from "./core/playbook";
 import { recordCureAction } from "./core/observability";
+import {
+  analyzeChatInput,
+  buildFallbackEmergencyResponse,
+  buildQuickActionResponse,
+  enforceResponsePolicy,
+  latestUserMessage,
+  type ChatResponse,
+} from "./core/aiChatPolicy";
 import { renderReportPdf } from "./core/reportPdf";
 import type { ReportPdfPayload } from "./core/reportPdf";
 import * as verdictService from "./core/verdictService";
@@ -44,7 +52,7 @@ import {
   createCsrfToken,
   buildCsrfCookie,
 } from "./core/auth";
-import type { Env, QueueMessage, WarningCardPayload } from "./types";
+import type { Env, HeatmapCell, QueueMessage, VerdictResult, WarningCardPayload } from "./types";
 
 const MAX_BODY_BYTES = 65_536; // 64 KB
 
@@ -110,7 +118,7 @@ const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/compl
 const DEFAULT_OPENROUTER_REFERER = "https://scamshield-my.m-naim.workers.dev";
 const DEFAULT_CHAT_MODELS = [
   "google/gemini-3-flash-preview:online",
-  "google/gemini-2.5-flash:online",
+  "google/gemini-2.0-flash-exp:free",
 ] as const;
 
 const boundedString = (maxLen: number) => z.string().max(maxLen);
@@ -1034,11 +1042,38 @@ app.get("/w/:slug", async (c) => {
   return c.html(html);
 });
 
+const DEMO_HEATMAP: HeatmapCell[] = [
+  { platform: "WhatsApp", category: "Investment", count: 142, trend: "↑" },
+  { platform: "WhatsApp", category: "Romance", count: 98, trend: "↑" },
+  { platform: "WhatsApp", category: "Impersonation", count: 121, trend: "↑" },
+  { platform: "WhatsApp", category: "Job Offer", count: 45, trend: "→" },
+  { platform: "Telegram", category: "Investment", count: 156, trend: "↑" },
+  { platform: "Telegram", category: "Crypto", count: 167, trend: "↑" },
+  { platform: "Telegram", category: "Job Offer", count: 89, trend: "↑" },
+  { platform: "Telegram", category: "Phishing", count: 34, trend: "→" },
+  { platform: "Facebook", category: "Romance", count: 134, trend: "↑" },
+  { platform: "Facebook", category: "E-Commerce", count: 112, trend: "→" },
+  { platform: "Facebook", category: "Phishing", count: 78, trend: "↑" },
+  { platform: "Instagram", category: "E-Commerce", count: 118, trend: "↑" },
+  { platform: "Instagram", category: "Investment", count: 67, trend: "→" },
+  { platform: "Instagram", category: "Romance", count: 72, trend: "↓" },
+  { platform: "Shopee", category: "E-Commerce", count: 145, trend: "↑" },
+  { platform: "Shopee", category: "Phishing", count: 88, trend: "↑" },
+  { platform: "TikTok", category: "Job Offer", count: 103, trend: "↑" },
+  { platform: "TikTok", category: "Investment", count: 81, trend: "↑" },
+  { platform: "X", category: "Crypto", count: 95, trend: "↑" },
+  { platform: "X", category: "Phishing", count: 56, trend: "→" },
+];
+
+function heatmapWithFallback(grid: HeatmapCell[]): HeatmapCell[] {
+  return grid.length > 0 ? grid : DEMO_HEATMAP;
+}
+
 app.get("/api/heatmap", async (c) => {
   const grid = await getHeatmapGrid(c.env.DB);
   return c.json({
     generatedAt: new Date().toISOString(),
-    grid,
+    grid: heatmapWithFallback(grid),
   });
 });
 
@@ -1046,41 +1081,100 @@ app.get("/api/heatmap", async (c) => {
 /*  AI Chat (OpenRouter → Gemini 3 Flash)                              */
 /* ------------------------------------------------------------------ */
 
-const AI_SYSTEM_PROMPT = `You are ScamShield MY — an AI scam-response specialist for Malaysia.
-Your job: help scam victims take immediate action to stop bleeding, preserve evidence, generate reports, and contain the spread.
+const AI_SYSTEM_PROMPT = `You are ScamShield AI, a rapid-response scam assistant for Malaysian victims. Your responses must include clickable options to guide users through the conversation.
 
-PERSONALITY: Calm, authoritative, empathetic but action-oriented. You speak like a crisis responder — no fluff, every sentence moves the victim forward. Use Malaysian context (MYR, local banks, NSRC 997, PDRM CCID, BNM).
+CORE PRINCIPLES:
+1. **Ask for Context First**: If user input is vague or missing critical details (when, how much, what platform), ask clarifying questions
+2. **Always Provide Options**: Every response MUST include 3 contextual option buttons based on what the user just said
+3. **Guide the Conversation**: Options should help users move toward resolution or provide more context
 
-CAPABILITIES YOU CAN GUIDE USERS TO (these are built into the app):
-1. **Verdict Check** — Paste a wallet address, token contract, or social handle to get an instant risk score.
-2. **Emergency Playbook** — Step-by-step: freeze bank, call NSRC 997, lock SIM, rotate passwords.
-3. **Report Generator** — Auto-generate copy-paste reports for bank, police (PDRM), and platform.
-4. **Recovery Checklist** — Track containment progress (bank freeze, revoke approvals, password rotation, SIM lock, evidence bundle, warn contacts).
-5. **Warning Card** — Generate shareable warning cards to protect others in the victim's network.
-6. **Scam Heatmap** — See trending scam types and platforms in Malaysia.
+RESPONSE FORMAT:
+Always respond with structured JSON containing:
+{
+  "message": "Your main response text (keep under 3 sentences)",
+  "options": [
+    {"text": "Option 1", "action": "user_message_to_send"},
+    {"text": "Option 2", "action": "user_message_to_send"},
+    {"text": "Option 3", "action": "user_message_to_send"}
+  ]
+}
 
-EMERGENCY CONTACTS:
-- NSRC (National Scam Response Centre): 997
-- PDRM CCID (Cyber Crime): https://semakmule.rmp.gov.my
-- BNM Fraud hotline: 1-300-88-5465
-- MCMC complaint: https://aduan.skmm.gov.my
+CONTEXT GATHERING:
+When user input lacks details, ask ONE specific question and provide options for quick answers:
 
-CONVERSATION FLOW:
-1. If user describes a scam → immediately ask what type (investment, romance, phishing, impersonation, crypto drain, job scam, etc.) and when it happened.
-2. Prioritize STOP THE BLEEDING actions first (bank freeze, revoke approvals).
-3. Then guide evidence collection.
-4. Then reporting (bank, police, platform).
-5. Suggest using the app's built-in tools (verdict check, report generator, warning card).
-6. If user pastes a wallet/contract address → suggest they use the Verdict Check tool.
+User: "I got scammed"
+Response:
+{
+  "message": "I'm here to help. First, have you contacted your bank to freeze your accounts yet?",
+  "options": [
+    {"text": "No, what should I do?", "action": "I haven't called my bank yet, what should I do now?"},
+    {"text": "Yes, I called them", "action": "I already called my bank to freeze my accounts"},
+    {"text": "Show me bank numbers", "action": "What are the bank fraud hotline numbers in Malaysia?"}
+  ]
+}
 
-RULES:
-- Never promise fund recovery. Say: "Recovery is not guaranteed, but fast action improves the odds."
-- Always recommend calling 997 (NSRC) for bank-related scams.
-- Be specific with Malaysian institutions and processes.
-- Keep responses concise. Use bullet points for action items.
-- If unsure, say so. Never fabricate legal advice.
-- You can use markdown formatting.
-- Respond in the same language the user writes in (Malay or English).`;
+User: "Someone contacted me"
+Response:
+{
+  "message": "Let me help assess this. What platform did they contact you on?",
+  "options": [
+    {"text": "WhatsApp", "action": "They contacted me on WhatsApp"},
+    {"text": "Telegram", "action": "They contacted me on Telegram"},
+    {"text": "Facebook/Instagram", "action": "They contacted me on Facebook or Instagram"}
+  ]
+}
+
+User: "I lost money"
+Response:
+{
+  "message": "I'm sorry to hear that. How much did you lose? This helps determine the urgency of actions needed.",
+  "options": [
+    {"text": "Less than RM 1,000", "action": "I lost less than RM 1,000"},
+    {"text": "RM 1,000 - RM 10,000", "action": "I lost between RM 1,000 and RM 10,000"},
+    {"text": "More than RM 10,000", "action": "I lost more than RM 10,000"}
+  ]
+}
+
+PROGRESSIVE RESPONSES:
+After user provides context, give actionable advice with next-step options:
+
+User: "I lost RM 5,000 on WhatsApp"
+Response:
+{
+  "message": "URGENT: Call your bank fraud hotline NOW to freeze accounts. Then file police report and contact NSRC 997.",
+  "options": [
+    {"text": "Show bank hotlines", "action": "What are the bank fraud hotline numbers in Malaysia?"},
+    {"text": "Generate police report", "action": "Help me generate a police report"},
+    {"text": "What is NSRC 997?", "action": "What does NSRC 997 help with?"}
+  ]
+}
+
+User: "I already called the bank"
+Response:
+{
+  "message": "Good first step. Now file a police report at semakmule.rmp.gov.my or nearest station. Get a report number.",
+  "options": [
+    {"text": "Generate report template", "action": "Help me generate a police report with all details"},
+    {"text": "How to use semakmule?", "action": "How do I use semakmule.rmp.gov.my to file online?"},
+    {"text": "What evidence to collect?", "action": "What evidence should I collect for the police report?"}
+  ]
+}
+
+OPTION GENERATION RULES:
+1. **Reflect User Context**: Options must be relevant to what user just said
+2. **Mix Answer Types**: Combine "yes/no", "get info", and "next action" options
+3. **Provide Escape Routes**: Always include an option to get emergency contacts or restart
+4. **Use User's Language**: Match English or Bahasa Melayu based on input
+
+EXAMPLE OPTION PATTERNS:
+- After platform disclosed: [Report to platform] [Document evidence] [Police report]
+- After amount disclosed: [Bank hotlines] [Generate report] [NSRC guidance]
+- After calling bank: [Police report] [Evidence collection] [Platform reporting]
+- When unclear: [Option A: Yes] [Option B: No] [Option C: Show me resources]
+
+LANGUAGE: Respond in user's language (English/Bahasa Melayu). Keep message concise (2-3 sentences). Options should be 3-7 words each.
+
+CRITICAL: Always return valid JSON. Never skip the options array. The options should be exactly what the user would type or select next.`;
 
 const aiChatSchema = z.object({
   messages: z.array(z.object({
@@ -1089,54 +1183,50 @@ const aiChatSchema = z.object({
   })).min(1).max(50),
 });
 
-// ── Smart Mock AI Response Generator ──
-function generateMockAiResponse(messages: { role: string; content: string }[]): string {
-  const userMessages = messages.filter(m => m.role === "user");
-  const lastUserMsg = userMessages[userMessages.length - 1]?.content || "";
-  const allUserContent = userMessages.map(m => m.content.toLowerCase()).join(" ");
-  const turnCount = userMessages.length;
-  
-  // Detect scam scenario from conversation
-  const isWhatsApp = allUserContent.includes("whatsapp") || allUserContent.includes("wa ") || allUserContent.includes("whatsapp");
-  const isTransferMoney = allUserContent.includes("transfer") || allUserContent.includes("bank") || allUserContent.includes("money");
-  const hasSharedInfo = allUserContent.includes("yes") || allUserContent.includes("shared") || allUserContent.includes("gave");
-  const hasNotSharedInfo = allUserContent.includes("no") && !allUserContent.includes("note");
-  
-  // First turn - ask for details
-  if (turnCount === 1) {
-    if (lastUserMsg.toLowerCase().includes("bank") || lastUserMsg.toLowerCase().includes("maybank") || lastUserMsg.toLowerCase().includes("cimb")) {
-      return "Bank-related scams are very common in Malaysia. Here's what you should do:\n\n1. **Do NOT click any links** in suspicious messages\n2. **Call your bank directly** using the official number from their website\n3. **Check your account** through the official banking app\n4. **Report to BNM** at 1-300-88-5465 if you've shared any details\n\nWould you like me to help you identify if the message is legitimate?";
-    }
-    if (lastUserMsg.toLowerCase().includes("call") || lastUserMsg.toLowerCase().includes("phone")) {
-      return "Phone scams often involve callers claiming to be from authorities or banks. Remember:\n\n1. **Government agencies never ask for money over the phone**\n2. **Never share OTP codes** with anyone\n3. **Hang up and verify** by calling the official number\n4. **Report to PDRM** via their hotline\n\nStay calm and don't let them pressure you into quick decisions.";
-    }
-    if (lastUserMsg.toLowerCase().includes("invest") || lastUserMsg.toLowerCase().includes("crypto") || lastUserMsg.toLowerCase().includes("profit")) {
-      return "Investment scams promise high returns with little risk. Warning signs include:\n\n1. **Guaranteed returns** - real investments always carry risk\n2. **Pressure to act fast** - legitimate opportunities don't disappear\n3. **Unregulated platforms** - check if they're licensed by SC Malaysia\n4. **Requests for personal banking info**\n\nReport investment scams to the Securities Commission at 03-6204 8999.";
-    }
-    return "I'm here to help you assess potential scams. To give you the best guidance, could you tell me:\n\n1. **How were you contacted?** (call, SMS, WhatsApp, email)\n2. **What were you asked to do?** (transfer money, click a link, share info)\n3. **Did you share any personal or banking details?**\n\nThe more details you provide, the better I can assist you with next steps.";
+async function resolveQuickActionReply(
+  messages: { role: "user" | "assistant"; content: string }[],
+  env: Env,
+): Promise<ChatResponse | null> {
+  const userText = latestUserMessage(messages);
+  const signals = analyzeChatInput(userText);
+  if (signals.intent === "unknown") {
+    return null;
   }
-  
-  // Second+ turn - provide contextual advice based on scenario
-  if (isWhatsApp && isTransferMoney) {
-    if (hasNotSharedInfo) {
-      return "🛡️ **Good news - you're likely safe!** Since you didn't share any personal information, the scammer has limited ability to harm you.\n\n**Immediate actions:**\n1. **Block the WhatsApp number** - don't engage further\n2. **Screenshot the conversation** as evidence\n3. **Report to WhatsApp** using the \"Report\" feature\n4. **Stay vigilant** - they may try again from different numbers\n\n**⚠️ WhatsApp Scam Alert:**\nThis is a common \"parcel scam\" or \"job scam\" pattern. Scammers often:\n- Claim you won a prize or have a pending delivery\n- Ask for small payments to release larger sums\n- Use fake courier websites\n\nWould you like me to help you report this to the authorities?";
+
+  let verdict: VerdictResult | null = null;
+  if (signals.intent === "check_wallet" && signals.walletAddress) {
+    try {
+      const evaluated = await verdictService.evaluateVerdict(
+        { type: "wallet", value: signals.walletAddress, chain: "evm" },
+        env,
+      );
+      verdict = evaluated.result;
+    } catch (error) {
+      logger.warn("ai_wallet_check_failed", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
     }
-    if (hasSharedInfo) {
-      return "🚨 **URGENT - Take action now!**\n\nSince you've shared information, here's your action plan:\n\n**Within the next hour:**\n1. **Call your bank immediately** to freeze your account\n   - Maybank: 1-300-88-6688\n   - CIMB: 1-300-88-8228\n   - Public Bank: 1-800-88-3323\n2. **Change your online banking password** from a different device\n3. **Check for unauthorized transactions**\n\n**Report to authorities:**\n- **PDRM Cyber Crime**: https://cybersecurity.rmp.gov.my\n- **BNM Telelink**: 1-300-88-5465\n- **NPCC Scam Response**: 03-2610 1500\n\nDo you need help with any of these steps?";
-    }
-    return "Thank you for the details. WhatsApp scams asking for money transfers are very common in Malaysia.\n\n**Did you share any personal or banking information with them?** (yes/no)\n\nThis will help me guide you on the next steps.";
   }
-  
-  // Generic follow-up
-  if (lastUserMsg.toLowerCase().includes("yes")) {
-    return "🚨 **URGENT - Take action now!**\n\nSince you've shared information, here's your action plan:\n\n**Within the next hour:**\n1. **Call your bank immediately** to freeze your account\n2. **Change your online banking password** from a different device\n3. **Check for unauthorized transactions**\n\n**Report to authorities:**\n- **PDRM Cyber Crime**: https://cybersecurity.rmp.gov.my\n- **BNM Telelink**: 1-300-88-5465\n\nDo you need help with any of these steps?";
+
+  const response = buildQuickActionResponse(signals, verdict);
+  if (!response) {
+    return null;
   }
-  
-  if (lastUserMsg.toLowerCase().includes("no")) {
-    return "🛡️ **Good news - you're likely safe!** Since you didn't share any personal information, the scammer has limited ability to harm you.\n\n**Recommended actions:**\n1. **Block the contact** - don't engage further\n2. **Screenshot the conversation** as evidence\n3. **Report to the platform** where you were contacted\n\nWould you like me to help you report this to the authorities?";
+  return response;
+}
+
+async function generateFallbackChatResponse(
+  messages: { role: "user" | "assistant"; content: string }[],
+  env: Env,
+): Promise<ChatResponse> {
+  const quickActionResponse = await resolveQuickActionReply(messages, env);
+  if (quickActionResponse) {
+    return quickActionResponse;
   }
-  
-  return "Thank you for sharing that information. Based on what you've told me, I recommend:\n\n1. **Do not engage further** with the suspicious contact\n2. **Document everything** - take screenshots\n3. **Report to PDRM** if you've suffered any loss\n4. **Monitor your accounts** for unusual activity\n\nIs there anything specific you'd like help with?";
+
+  const userText = latestUserMessage(messages);
+  const signals = analyzeChatInput(userText);
+  return buildFallbackEmergencyResponse(signals);
 }
 
 app.post("/api/ai/chat", async (c) => {
@@ -1146,15 +1236,17 @@ app.post("/api/ai/chat", async (c) => {
   if (!parsed.success) {
     return jsonError("Invalid chat payload.");
   }
+  const userText = latestUserMessage(parsed.data.messages);
+  const signals = analyzeChatInput(userText);
 
   // ── Mock fallback for development when API key not configured ──
   if (!apiKey) {
     if (strictAiMode) {
       return jsonError("AI service unavailable.", 503);
     }
-    const mockResponse = generateMockAiResponse(parsed.data.messages);
-    await new Promise(r => setTimeout(r, 500));
-    return c.json({ message: mockResponse });
+    const mockResponse = await generateFallbackChatResponse(parsed.data.messages, c.env);
+    await new Promise((r) => setTimeout(r, 250));
+    return c.json(mockResponse);
   }
 
   // ── Daily quota enforcement for AI chat ──
@@ -1168,6 +1260,12 @@ app.post("/api/ai/chat", async (c) => {
       ? `Daily limit of ${dailyLimit} requests reached. Resets at midnight UTC.`
       : `Free tier limit of ${dailyLimit} requests reached. Sign in for ${DAILY_LIMIT_LOGIN} daily.`;
     return jsonError(msg, 429);
+  }
+
+  const quickActionResponse = await resolveQuickActionReply(parsed.data.messages, c.env);
+  if (quickActionResponse) {
+    await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
+    return c.json(quickActionResponse);
   }
 
   const messages = [
@@ -1201,9 +1299,32 @@ app.post("/api/ai/chat", async (c) => {
 
     if (response.ok) {
       const data = await response.json() as { choices?: { message?: { content?: string } }[] };
-      const message = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
+      const rawMessage = data.choices?.[0]?.message?.content || "I could not process this request.";
+      
+      // Try parsing as JSON first (Gemini should return structured JSON)
+      let chatResponse: ChatResponse;
+      try {
+        // Extract JSON from markdown code blocks if present
+        const jsonMatch = rawMessage.match(/```json\s*([\s\S]*?)```/) || rawMessage.match(/```\s*([\s\S]*?)```/);
+        const jsonText = jsonMatch ? jsonMatch[1].trim() : rawMessage.trim();
+        
+        const parsed = JSON.parse(jsonText) as { message?: string; options?: { text: string; action: string }[] };
+        if (parsed.message && Array.isArray(parsed.options)) {
+          chatResponse = {
+            message: parsed.message,
+            options: parsed.options.slice(0, 3), // Max 3 options
+          };
+        } else {
+          // Fallback if JSON structure is invalid
+          chatResponse = enforceResponsePolicy(rawMessage, signals.language);
+        }
+      } catch {
+        // Fallback to policy enforcement if JSON parsing fails
+        chatResponse = enforceResponsePolicy(rawMessage, signals.language);
+      }
+      
       await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
-      return c.json({ message });
+      return c.json(chatResponse);
     }
 
     lastStatus = response.status;
@@ -1216,8 +1337,8 @@ app.post("/api/ai/chat", async (c) => {
       if (strictAiMode) {
         return jsonError("AI provider authentication failed.", 502);
       }
-      const mockResponse = generateMockAiResponse(parsed.data.messages);
-      return c.json({ message: mockResponse });
+      const mockResponse = await generateFallbackChatResponse(parsed.data.messages, c.env);
+      return c.json(mockResponse);
     }
   }
 
@@ -1225,8 +1346,8 @@ app.post("/api/ai/chat", async (c) => {
 
   // Fall back to mock responses when all models fail and strict mode is off
   if (!strictAiMode) {
-    const mockResponse = generateMockAiResponse(parsed.data.messages);
-    return c.json({ message: mockResponse });
+    const mockResponse = await generateFallbackChatResponse(parsed.data.messages, c.env);
+    return c.json(mockResponse);
   }
 
   return jsonError("AI service unavailable. Try again shortly.", 502);
@@ -1295,7 +1416,7 @@ app.get("/api/dashboard/admin", async (c) => {
     todayUsage: todayUsage?.cnt ?? 0,
     topUsers: topUsers.results ?? [],
     scamStats: stats,
-    heatmap,
+    heatmap: heatmapWithFallback(heatmap),
     gamification: gamificationAdmin,
     bounties,
     partnerships,
@@ -1392,3 +1513,4 @@ export default {
     logger.info("cron_completed", { trigger: controller.cron });
   },
 };
+
