@@ -18,6 +18,7 @@ interface ChatDrawerProps {
 const quickActions = [
   { key: 'ai.quick.scammed', icon: Sparkles },
   { key: 'ai.quick.check_wallet', icon: Sparkles },
+  { key: 'ai.quick.report', icon: Sparkles },
   { key: 'ai.quick.emergency', icon: Sparkles },
 ]
 

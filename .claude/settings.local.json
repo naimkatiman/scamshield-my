@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "WebFetch(domain:scamshield-my.m-naim.workers.dev)",
+      "mcp__mcp-playwright__browser_navigate",
+      "mcp__mcp-playwright__browser_type",
+      "mcp__mcp-playwright__browser_console_messages"
+    ]
+  }
+}
