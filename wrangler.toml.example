@@ -45,6 +45,7 @@ CRYPTOSCAMDB_API_BASE = "https://api.cryptoscamdb.org"
 directory = "./client/dist"    # React build output (was ./public)
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
 
 # Replace all TODO_DEPLOY_* values before deploying.
 

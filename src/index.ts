@@ -118,7 +118,7 @@ const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/compl
 const DEFAULT_OPENROUTER_REFERER = "https://scamshield-my.m-naim.workers.dev";
 const DEFAULT_CHAT_MODELS = [
   "google/gemini-3-flash-preview:online",
-  "google/gemini-2.5-flash:online",
+  "google/gemini-2.0-flash-exp:free",
 ] as const;
 
 const boundedString = (maxLen: number) => z.string().max(maxLen);
@@ -1081,44 +1081,70 @@ app.get("/api/heatmap", async (c) => {
 /*  AI Chat (OpenRouter → Gemini 3 Flash)                              */
 /* ------------------------------------------------------------------ */
 
-const AI_SYSTEM_PROMPT = `You are ScamShield AI, a rapid-response scam assistant for Malaysian victims.
+const AI_SYSTEM_PROMPT = `You are ScamShield AI, a rapid-response scam assistant for Malaysian victims. Your responses must include clickable options to guide users through the conversation.
 
-PRIMARY RULE:
-- Click-first, type-second. Users should get most value from quick actions.
+RESPONSE FORMAT:
+Always respond with structured JSON containing:
+{
+  "message": "Your main response text (keep under 3 sentences)",
+  "options": [
+    {"text": "Option 1", "action": "user_message_to_send"},
+    {"text": "Option 2", "action": "user_message_to_send"},
+    {"text": "Option 3", "action": "user_message_to_send"}
+  ]
+}
 
-STRICT OUTPUT FORMAT:
-1) Immediate Action: first sentence says what to do RIGHT NOW.
-2) Quick Steps: 2-3 short bullet points for next 5-15 minutes.
-3) Resources: 1 short line with numbers or where to report.
-4) Optional Context Question: ask only if essential.
+RESPONSE STRATEGY:
+1. **Immediate Action First**: Start with the most critical action
+2. **Progressive Options**: Each option should advance the conversation logically
+3. **Max 3 Options**: Never overwhelm with too many choices
+4. **Action-Oriented**: Options should be what the user wants to do next
+5. **Context-Aware**: Options adapt to user's situation
 
-RESPONSE RULES:
-- Maximum 4 sentences total.
-- Keep each sentence under 15 words.
-- End with one clear next step or question.
-- Use urgency markers: NOW, IMMEDIATELY, URGENT.
-- Respond in the same language as the user (English or Bahasa Melayu).
+EXAMPLE SCENARIOS:
 
-QUICK ACTION HANDLES:
-- "I got scammed - what now?" => emergency checklist (bank freeze, NSRC 997, preserve evidence).
-- "Check a wallet address" => quick risk assessment and next steps from risk.
-- "Generate a report" => minimal fields only (when, how much, what platform).
-- "Emergency contacts" => direct phone numbers and hotlines.
+User: "I got scammed"
+Response:
+{
+  "message": "FREEZE YOUR BANK ACCOUNTS NOW. Call your bank fraud hotline immediately, then NSRC at 997.",
+  "options": [
+    {"text": "I need bank emergency numbers", "action": "What are the bank fraud hotline numbers in Malaysia?"},
+    {"text": "I already called the bank", "action": "I called my bank, what's next?"},
+    {"text": "How much did I lose?", "action": "I lost RM [amount] to a [platform] scam"}
+  ]
+}
 
-CONTEXT MINIMIZATION:
-- Never ask for full story upfront.
-- Ask only "when", "how much", and "what platform" when needed.
-- Assume worst-case safety and prioritize account freeze.
+User: "Check wallet 0x123..."
+Response:
+{
+  "message": "HIGH RISK DETECTED. This address shows multiple scam reports. Move any remaining funds immediately.",
+  "options": [
+    {"text": "How to move funds safely?", "action": "How do I safely move my funds from this wallet?"},
+    {"text": "Report this wallet", "action": "Generate a police report for this wallet address"},
+    {"text": "Check another address", "action": "I want to check another wallet address"}
+  ]
+}
 
-ESCALATION TRIGGERS:
-- If police or bank is mentioned, give specific station or branch guidance.
-- If loss is above RM5,000, emphasize NSRC 997 coordination.
-- If multiple platforms are involved, prioritize by highest financial impact.
+User: "Emergency contacts"
+Response:
+{
+  "message": "Here are the critical emergency numbers. Call them in this order.",
+  "options": [
+    {"text": "Bank fraud hotlines", "action": "Show me all bank fraud hotline numbers"},
+    {"text": "Police reporting guide", "action": "How do I file a police report for online scams?"},
+    {"text": "NSRC coordination", "action": "What does NSRC 997 help with?"}
+  ]
+}
 
-SAFETY:
-- Never promise fund recovery.
-- Use Malaysian pathways: NSRC 997, PDRM CCID, BNM 1-300-88-5465.
-- Do not fabricate legal or procedural claims.`;
+OPTION CATEGORIES:
+- **Immediate Actions**: Emergency numbers, freeze accounts
+- **Next Steps**: Evidence collection, reporting procedures  
+- **Specific Help**: Platform-specific guidance, amount-based advice
+- **Prevention**: How to avoid similar scams
+
+LANGUAGE: Respond in user's language (English/Bahasa Melayu). Options should be short, clear, and action-focused.
+
+CRITICAL: Always return valid JSON. Never include explanations outside the structure. The options should be exactly what the user would type next.`;
 
 const aiChatSchema = z.object({
   messages: z.array(z.object({
@@ -1244,7 +1270,29 @@ app.post("/api/ai/chat", async (c) => {
     if (response.ok) {
       const data = await response.json() as { choices?: { message?: { content?: string } }[] };
       const rawMessage = data.choices?.[0]?.message?.content || "I could not process this request.";
-      const chatResponse = enforceResponsePolicy(rawMessage, signals.language);
+      
+      // Try parsing as JSON first (Gemini should return structured JSON)
+      let chatResponse: ChatResponse;
+      try {
+        // Extract JSON from markdown code blocks if present
+        const jsonMatch = rawMessage.match(/```json\s*([\s\S]*?)```/) || rawMessage.match(/```\s*([\s\S]*?)```/);
+        const jsonText = jsonMatch ? jsonMatch[1].trim() : rawMessage.trim();
+        
+        const parsed = JSON.parse(jsonText) as { message?: string; options?: { text: string; action: string }[] };
+        if (parsed.message && Array.isArray(parsed.options)) {
+          chatResponse = {
+            message: parsed.message,
+            options: parsed.options.slice(0, 3), // Max 3 options
+          };
+        } else {
+          // Fallback if JSON structure is invalid
+          chatResponse = enforceResponsePolicy(rawMessage, signals.language);
+        }
+      } catch {
+        // Fallback to policy enforcement if JSON parsing fails
+        chatResponse = enforceResponsePolicy(rawMessage, signals.language);
+      }
+      
       await recordUsage(c.env.DB, userId, ip, "ai_chat").catch(() => { });
       return c.json(chatResponse);
     }
