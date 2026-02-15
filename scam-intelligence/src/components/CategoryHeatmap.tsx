@@ -1,8 +1,17 @@
 import { motion } from 'framer-motion'
 import { heatmapData } from '../data/mockData'
+import { TelegramIcon, WhatsAppIcon, FacebookIcon, InstagramIcon, ShopeeIcon, TikTokIcon, XIcon } from './BrandIcons'
 import clsx from 'clsx'
 
-const platforms = ['Telegram', 'WhatsApp', 'Facebook', 'Instagram', 'Shopee', 'TikTok', 'X']
+const platforms = [
+  { name: 'Telegram', icon: TelegramIcon },
+  { name: 'WhatsApp', icon: WhatsAppIcon },
+  { name: 'Facebook', icon: FacebookIcon },
+  { name: 'Instagram', icon: InstagramIcon },
+  { name: 'Shopee', icon: ShopeeIcon },
+  { name: 'TikTok', icon: TikTokIcon },
+  { name: 'X', icon: XIcon }
+]
 const categories = ['Investment', 'Romance', 'Job Offer', 'E-Commerce', 'Crypto', 'Phishing', 'Impersonation']
 
 function getHeatColor(count: number): string {
@@ -79,32 +88,35 @@ export default function CategoryHeatmap() {
           </div>
 
           {/* Rows */}
-          {platforms.map((platform, pi) => (
-            <motion.div
-              key={platform}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 + pi * 0.05 }}
-              className="grid grid-cols-[100px_repeat(7,1fr)] gap-1 mb-1"
-            >
-              <div className="flex items-center px-1 font-mono text-xs text-slate-400">
-                {platform}
-              </div>
+          {platforms.map((platform, pi) => {
+            const IconComponent = platform.icon
+            return (
+              <motion.div
+                key={platform.name}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + pi * 0.05 }}
+                className="grid grid-cols-[100px_repeat(7,1fr)] gap-1 mb-1"
+              >
+                <div className="flex items-center px-1 font-mono text-xs text-slate-400 gap-1">
+                  <IconComponent size={12} className="text-slate-500" />
+                  {platform.name}
+                </div>
               {categories.map((category) => {
                 const cell = heatmapData.find(
-                  (c) => c.platform === platform && c.category === category
+                  (c) => c.platform === platform.name && c.category === category
                 )
                 const count = cell?.count ?? 0
                 const intensity = count / maxCount
 
                 return (
                   <div
-                    key={`${platform}-${category}`}
+                    key={`${platform.name}-${category}`}
                     className={clsx(
                       'heatmap-cell h-9',
                       getHeatColor(count)
                     )}
-                    title={`${platform} × ${category}: ${count} reports (${cell?.trend ?? 'stable'})`}
+                    title={`${platform.name} × ${category}: ${count} reports (${cell?.trend ?? 'stable'})`}
                   >
                     {count > 0 && (
                       <span className="flex items-center">
@@ -116,7 +128,8 @@ export default function CategoryHeatmap() {
                 )
               })}
             </motion.div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </motion.div>

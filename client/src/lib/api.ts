@@ -1,12 +1,28 @@
 const API_BASE = ''
 
+async function ensureCsrfToken(): Promise<string | null> {
+  let csrf = getCsrfToken()
+  if (!csrf) {
+    try {
+      const res = await fetch(`${API_BASE}/api/csrf-token`, { credentials: 'same-origin' })
+      if (res.ok) {
+        const data = await res.json()
+        csrf = data.token
+      }
+    } catch {
+      // Ignore errors, will send request without CSRF
+    }
+  }
+  return csrf
+}
+
 function getCsrfToken(): string | null {
   const match = document.cookie.match(/scamshield_csrf=([^;]+)/)
   return match ? match[1] : null
 }
 
 async function fetchJSON<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const csrf = getCsrfToken()
+  const csrf = await ensureCsrfToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
@@ -116,5 +132,189 @@ export const updateRecoveryProgress = (completedTaskIds: string[]) =>
 export const getHeatmap = () => fetchJSON<{ grid: { platform: string; category: string; count: number; trend: string }[] }>('/api/heatmap')
 
 // Dashboard
-export const getDashboardClient = () => fetchJSON<Record<string, unknown>>('/api/dashboard/client')
-export const getDashboardAdmin = () => fetchJSON<Record<string, unknown>>('/api/dashboard/admin')
+export interface UsageHistoryEntry {
+  action: string
+  day: string
+  timestamp: string
+}
+
+export interface UserAchievement {
+  code: string
+  title: string
+  description: string
+  awardedAt: string
+}
+
+export interface PremiumState {
+  unlocked: boolean
+  remainingPoints: number
+  remainingStreakDays: number
+  reasons: string[]
+}
+
+export interface GamificationProfile {
+  userId: string
+  totalPoints: number
+  currentStreakDays: number
+  longestStreakDays: number
+  lastActivityDay: string | null
+  reportsSubmitted: number
+  premiumUnlocked: boolean
+  premium: PremiumState
+  premiumFeatures: readonly string[]
+  referralCode: string
+  referredByUserId: string | null
+  achievements: UserAchievement[]
+}
+
+export interface ReferralDetail {
+  displayName: string
+  createdAt: string
+  pointsAwarded: number
+}
+
+export interface ReferralSummary {
+  referralCode: string
+  totalReferrals: number
+  rewardedPoints: number
+  referrals: ReferralDetail[]
+}
+
+export interface MonthlyCompetitionRecord {
+  id: number
+  monthKey: string
+  name: string
+  prizePoolCents: number
+  currency: string
+  sponsor: string | null
+  status: string
+  rules: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MonthlyCompetitionLeaderboardEntry {
+  rank: number
+  userId: string
+  displayName: string
+  points: number
+}
+
+export interface CompetitionWinner {
+  userId: string
+  displayName: string
+  rank: number
+  points: number
+  prizeCents: number
+  createdAt: string
+}
+
+export interface MonthlyCompetitionOverview {
+  competition: MonthlyCompetitionRecord
+  leaderboard: MonthlyCompetitionLeaderboardEntry[]
+  winners: CompetitionWinner[]
+}
+
+export interface BountyRecord {
+  id: number
+  title: string
+  description: string
+  targetIdentifier: string
+  platform: string
+  rewardPoints: number
+  priority: string
+  status: string
+  createdByUserId: string | null
+  claimedByUserId: string | null
+  createdAt: string
+  claimedAt: string | null
+  closedAt: string | null
+}
+
+export interface CashPrizeRecord {
+  id: number
+  userId: string
+  displayName: string
+  competitionId: number | null
+  amountCents: number
+  currency: string
+  partnerName: string | null
+  status: string
+  payoutReference: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DashboardClientResponse {
+  email: string
+  role: string
+  quota: { used: number; limit: number; remaining: number; day: string }
+  history: UsageHistoryEntry[]
+  gamification: GamificationProfile
+  referrals: ReferralSummary
+  competition: MonthlyCompetitionOverview
+  bounties: BountyRecord[]
+  prizes: CashPrizeRecord[]
+}
+
+export interface LeaderboardEntry {
+  rank: number
+  userId: string
+  displayName: string
+  totalPoints: number
+  currentStreakDays: number
+  reportsSubmitted: number
+  premiumUnlocked: boolean
+}
+
+export interface BrandPartnershipRecord {
+  id: number
+  brandName: string
+  contactEmail: string | null
+  prizeType: string
+  contributionCents: number
+  currency: string
+  status: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GamificationAdminSnapshot {
+  totalPointsAwarded: number
+  premiumUsers: number
+  openBounties: number
+  pendingCashPrizes: number
+  activePartnerships: number
+  leaderboard: LeaderboardEntry[]
+  activeCompetition: MonthlyCompetitionRecord
+  recentCashPrizes: CashPrizeRecord[]
+}
+
+export interface DashboardAdminResponse {
+  day: string
+  totalUsers: number
+  todayUsage: number
+  topUsers: Array<{ email: string; usage_count: number }>
+  scamStats: Record<string, unknown>
+  heatmap: { platform: string; category: string; count: number; trend: string }[]
+  gamification: GamificationAdminSnapshot
+  bounties: BountyRecord[]
+  partnerships: BrandPartnershipRecord[]
+}
+
+export interface LeaderboardResponse {
+  generatedAt: string
+  leaderboard: LeaderboardEntry[]
+}
+
+export const getDashboardClient = () => fetchJSON<DashboardClientResponse>('/api/dashboard/client')
+export const getDashboardAdmin = () => fetchJSON<DashboardAdminResponse>('/api/dashboard/admin')
+export const getLeaderboard = (limit = 50) => fetchJSON<LeaderboardResponse>(`/api/leaderboard?limit=${limit}`)
+export const applyReferralCode = (code: string) =>
+  fetchJSON<{ referrerUserId: string; referrerPoints: number; referredPoints: number }>('/api/referrals/apply', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+export const claimBounty = (bountyId: number) => fetchJSON<{ bounty: BountyRecord }>(`/api/bounties/${bountyId}/claim`, { method: 'POST' })

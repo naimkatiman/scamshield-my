@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Copy, ExternalLink, MessageCircle, Send } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { TelegramIcon, WhatsAppIcon } from '../ui/BrandIcons'
 import { useLocale } from '../../context/LocaleContext'
 import { useToast } from '../../context/ToastContext'
 import { copyToClipboard } from '../../lib/utils'
@@ -66,7 +67,7 @@ export function ShareStep({ warningCard, loading }: ShareStepProps) {
           rel="noopener noreferrer"
         >
           <Button variant="safe" size="sm">
-            <MessageCircle size={14} />
+            <WhatsAppIcon size={14} />
             {t('flow.share.whatsapp')}
           </Button>
         </a>
@@ -76,7 +77,7 @@ export function ShareStep({ warningCard, loading }: ShareStepProps) {
           rel="noopener noreferrer"
         >
           <Button variant="ghost" size="sm">
-            <Send size={14} />
+            <TelegramIcon size={14} />
             {t('flow.share.telegram')}
           </Button>
         </a>

@@ -8,6 +8,7 @@ import { Landing } from './pages/Landing'
 import { VerdictFlow } from './pages/VerdictFlow'
 import { Intelligence } from './pages/Intelligence'
 import { Dashboard } from './pages/Dashboard'
+import { Leaderboard } from './pages/Leaderboard'
 
 const pageTransition = {
   initial: { opacity: 0, y: 20 },
@@ -56,6 +57,14 @@ export function App() {
               element={
                 <motion.div {...pageTransition}>
                   <Dashboard />
+                </motion.div>
+              }
+            />
+            <Route
+              path="/leaderboard"
+              element={
+                <motion.div {...pageTransition}>
+                  <Leaderboard />
                 </motion.div>
               }
             />

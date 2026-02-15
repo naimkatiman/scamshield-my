@@ -12,6 +12,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'nav.manual_toolkit': 'Manual Toolkit',
     'nav.intelligence': 'Intelligence',
     'nav.home': 'Home',
+    'nav.leaderboard': 'Leaderboard',
 
     // AI Mode
     'hero.ai.title': 'Got scammed? Tell me what happened.',
@@ -112,6 +113,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'nav.manual_toolkit': 'Kit Manual',
     'nav.intelligence': 'Perisikan',
     'nav.home': 'Utama',
+    'nav.leaderboard': 'Papan Kedudukan',
 
     // AI Mode
     'hero.ai.title': 'Terkena scam? Beritahu saya apa yang berlaku.',

@@ -41,6 +41,8 @@ import {
   hasSessionCookie,
   recordUsage,
   validateCsrfRequest,
+  createCsrfToken,
+  buildCsrfCookie,
 } from "./core/auth";
 import type { Env, QueueMessage, WarningCardPayload } from "./types";
 
@@ -522,6 +524,7 @@ app.use("*", async (c, next) => {
 const csrfExemptApiPaths = new Set<string>([
   "/api/auth/login",
   "/api/auth/callback",
+  "/api/csrf-token",
 ]);
 
 app.use("*", async (c, next) => {
@@ -573,6 +576,17 @@ app.get("/api/health", (c) => {
     region: c.env.REGION,
     providerMode: c.env.PROVIDER_MODE ?? "mock",
     killerPitch: KILLER_PITCH_LINE,
+  });
+});
+
+// Public CSRF token endpoint - allows any user to get a CSRF token
+app.get("/api/csrf-token", (c) => {
+  const token = createCsrfToken();
+  const cookie = buildCsrfCookie(token);
+  return c.json({ token }, {
+    headers: {
+      "Set-Cookie": cookie,
+    },
   });
 });
 

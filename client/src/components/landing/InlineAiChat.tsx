@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Sparkles, Shield } from 'lucide-react'
+import { Send, Bot, User, Sparkles, Shield, ExternalLink } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { TelegramIcon } from '../ui/BrandIcons'
 import { useLocale } from '../../context/LocaleContext'
 import { useToast } from '../../context/ToastContext'
 import { sendChatMessage } from '../../lib/api'
@@ -41,7 +42,7 @@ export function InlineAiChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `**${t('ai.greeting.title')}**\n\n${t('ai.greeting.body')}\n\n*${t('ai.greeting.hint')}*`,
+      content: `**${t('ai.greeting.title')}**\n\n${t('ai.greeting.body')}\n\n*Join our Telegram support group for immediate help: https://t.me/ScamShieldMY*`,
     },
   ])
   const [input, setInput] = useState('')
@@ -140,10 +141,18 @@ export function InlineAiChat() {
           <Shield size={14} className="text-cyber" />
         </div>
         <div className="flex-1">
-          <span className="font-display text-sm font-semibold text-white">ScamShield AI</span>
+          <span className="font-display text-sm font-semibold text-white">ScamShield Support</span>
           <span className="live-dot ml-2" />
         </div>
-        <span className="font-mono text-[10px] text-slate-600 tracking-wider">ACTIVE</span>
+        <a
+          href="https://t.me/ScamShieldMY"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0088cc]/10 border border-[#0088cc]/20 hover:bg-[#0088cc]/20 transition-all group"
+        >
+          <TelegramIcon size={14} className="text-[#0088cc] group-hover:text-white" />
+          <span className="font-mono text-[10px] text-[#0088cc] group-hover:text-white">JOIN</span>
+        </a>
       </div>
 
       {/* Messages */}

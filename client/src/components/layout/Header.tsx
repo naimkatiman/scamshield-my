@@ -1,13 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Shield, Globe, LogIn, LogOut, User, LayoutDashboard, Activity } from 'lucide-react'
+import { Shield, Globe, LogIn, LogOut, User, LayoutDashboard, Activity, Trophy } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useLocale } from '../../context/LocaleContext'
 import { cn } from '../../lib/utils'
 import { ROUTES } from '../../lib/constants'
 
 export function Header() {
-  const { user, isAuthenticated, isAdmin, quota, login, logout } = useAuth()
+  const { user, isAuthenticated, quota, login, logout } = useAuth()
   const { locale, setLocale, t } = useLocale()
   const location = useLocation()
 
@@ -15,6 +15,7 @@ export function Header() {
     { to: ROUTES.HOME, label: t('nav.home'), icon: Shield },
     { to: ROUTES.CHECK, label: t('nav.manual_toolkit'), icon: Activity },
     { to: ROUTES.INTELLIGENCE, label: t('nav.intelligence'), icon: Activity },
+    { to: ROUTES.LEADERBOARD, label: t('nav.leaderboard'), icon: Trophy },
   ]
 
   return (

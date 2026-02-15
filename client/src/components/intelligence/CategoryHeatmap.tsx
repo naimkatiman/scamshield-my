@@ -1,8 +1,17 @@
 import { motion } from 'framer-motion'
 import { Grid3X3 } from 'lucide-react'
+import { TelegramIcon, WhatsAppIcon, FacebookIcon, InstagramIcon, ShopeeIcon, TikTokIcon, XIcon } from '../ui/BrandIcons'
 import { heatmapData } from '../../data/mockIntelligence'
 
-const platforms = ['Telegram', 'WhatsApp', 'Facebook', 'Instagram', 'Shopee', 'TikTok', 'X']
+const platforms = [
+  { name: 'Telegram', icon: TelegramIcon },
+  { name: 'WhatsApp', icon: WhatsAppIcon },
+  { name: 'Facebook', icon: FacebookIcon },
+  { name: 'Instagram', icon: InstagramIcon },
+  { name: 'Shopee', icon: ShopeeIcon },
+  { name: 'TikTok', icon: TikTokIcon },
+  { name: 'X', icon: XIcon }
+]
 const categories = ['Investment', 'Romance', 'Job Offer', 'E-Commerce', 'Crypto', 'Phishing', 'Impersonation']
 
 function getCellColor(count: number): string {
@@ -45,30 +54,34 @@ export function CategoryHeatmap() {
           </div>
 
           {/* Data rows */}
-          {platforms.map(platform => (
-            <div key={platform} className="grid gap-1 mb-1" style={{ gridTemplateColumns: `80px repeat(${categories.length}, 1fr)` }}>
-              <div className="flex items-center font-mono text-[10px] text-slate-400 pr-2">
-                {platform}
+          {platforms.map(platform => {
+            const IconComponent = platform.icon
+            return (
+              <div key={platform.name} className="grid gap-1 mb-1" style={{ gridTemplateColumns: `80px repeat(${categories.length}, 1fr)` }}>
+                <div className="flex items-center font-mono text-[10px] text-slate-400 pr-2 gap-1">
+                  <IconComponent size={12} className="text-slate-500" />
+                  {platform.name}
+                </div>
+                {categories.map(category => {
+                  const cell = heatmapData.find(c => c.platform === platform.name && c.category === category)
+                  const count = cell?.count ?? 0
+                  const trend = getTrendArrow(cell?.trend ?? 'stable')
+                  return (
+                    <div
+                      key={category}
+                      className={`heatmap-cell h-9 ${getCellColor(count)}`}
+                      title={`${platform.name} × ${category}: ${count} reports`}
+                    >
+                      <span className="text-[10px] text-slate-400">{count}</span>
+                      {trend.symbol && (
+                        <span className={`text-[8px] ml-0.5 ${trend.color}`}>{trend.symbol}</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-              {categories.map(category => {
-                const cell = heatmapData.find(c => c.platform === platform && c.category === category)
-                const count = cell?.count ?? 0
-                const trend = getTrendArrow(cell?.trend ?? 'stable')
-                return (
-                  <div
-                    key={category}
-                    className={`heatmap-cell h-9 ${getCellColor(count)}`}
-                    title={`${platform} × ${category}: ${count} reports`}
-                  >
-                    <span className="text-[10px] text-slate-400">{count}</span>
-                    {trend.symbol && (
-                      <span className={`text-[8px] ml-0.5 ${trend.color}`}>{trend.symbol}</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

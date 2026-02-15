@@ -3,6 +3,7 @@ export const ROUTES = {
   CHECK: '/check',
   INTELLIGENCE: '/intelligence',
   DASHBOARD: '/dashboard',
+  LEADERBOARD: '/leaderboard',
   ADMIN: '/admin',
   WARNING: '/w/:slug',
 } as const
