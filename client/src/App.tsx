@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Background } from './components/layout/Background'
@@ -19,16 +20,36 @@ const pageTransition = {
   transition: { duration: 0.4, ease: [0.2, 0.8, 0.2, 1] as const },
 }
 
+function ScrollToTopOnRouteChange() {
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.hash) return
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+  }, [location.pathname, location.hash])
+
+  return null
+}
+
 export function App() {
   const location = useLocation()
   const { user } = useAuth()
 
   return (
     <div className="relative min-h-screen">
+      <a
+        href="#main-content"
+        className="sr-only z-[9999] rounded-md bg-cyber px-3 py-2 font-mono text-xs font-semibold text-noir-950 focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
+      >
+        Skip to content
+      </a>
+      <ScrollToTopOnRouteChange />
       <Background />
       <Header />
 
-      <main className="relative z-10">
+      <main id="main-content" className="relative z-10 min-h-[calc(100vh-12rem)]">
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route

@@ -41,6 +41,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'landing.feature.intel': 'Threat Intelligence',
     'landing.feature.intel_desc': 'Real-time scam monitoring, heatmaps, and active campaign tracking.',
     'landing.trust': 'Powered by community intelligence',
+    'landing.signal.fast': '< 2s verdict',
+    'landing.signal.locale': 'EN + BM support',
+    'landing.signal.recovery': 'Recovery-first flow',
 
     // Verdict
     'verdict.input.placeholder': 'Paste anything: 0x... address, @handle, URL, phone number',
@@ -50,6 +53,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'verdict.result.risk_score': 'Risk Score',
     'verdict.result.next_steps': 'Next steps:',
     'verdict.detected': 'Detected type',
+    'verdict.tab.risk_scan': 'Risk Scanner',
+    'verdict.tab.investor_alert': 'Investor Alert',
+    'verdict.scan.hint': 'Paste any suspicious address, handle, URL, or phone number',
     'alerts.quick.title': 'Investor Alert Quick Database',
     'alerts.quick.subtitle': 'Cross-check suspicious investment entities against SC Malaysia alerts before taking action.',
     'alerts.quick.placeholder': 'Enter company, platform, or promoter name',
@@ -86,6 +92,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     'flow.legit.tip2': 'Never send money based on one message alone',
     'flow.legit.tip3': 'If it feels off, trust your instinct and wait',
     'flow.legit.check_another': 'Check Another',
+    'flow.phase.input': 'Input',
+    'flow.phase.scan': 'Scan',
+
+    // Dashboard
+    'dashboard.jump.achievements': 'Achievements',
+    'dashboard.jump.referrals': 'Referrals',
+    'dashboard.jump.competition': 'Competition',
+    'dashboard.jump.bounties': 'Bounties',
+    'dashboard.jump.activity': 'Activity',
 
     // Playbook
     'playbook.stop.bank': 'Call your bank\'s fraud hotline now. Request an immediate freeze on outgoing transfers. Ask for a case reference number.',
@@ -106,6 +121,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     'intel.threat_level': 'Threat Level',
     'intel.status': 'ONLINE',
     'intel.region': 'MY-KUL',
+
+    // Leaderboard
+    'leaderboard.filter.placeholder': 'Filter by username',
+    'leaderboard.filter.premium_only': 'Premium only',
+    'leaderboard.filter.all_tiers': 'All tiers',
+    'leaderboard.filter.no_match': 'No users match your current filter.',
   },
   bm: {
     // Navigation & Auth
@@ -147,6 +168,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'landing.feature.intel': 'Perisikan Ancaman',
     'landing.feature.intel_desc': 'Pemantauan scam masa nyata, peta haba, dan penjejakan kempen aktif.',
     'landing.trust': 'Dikuasakan oleh perisikan komuniti',
+    'landing.signal.fast': 'Verdik < 2s',
+    'landing.signal.locale': 'Sokongan EN + BM',
+    'landing.signal.recovery': 'Aliran pemulihan dahulu',
 
     // Verdict
     'verdict.input.placeholder': 'Tampal apa sahaja: alamat 0x..., @handle, URL, nombor telefon',
@@ -156,6 +180,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'verdict.result.risk_score': 'Skor Risiko',
     'verdict.result.next_steps': 'Langkah seterusnya:',
     'verdict.detected': 'Jenis dikesan',
+    'verdict.tab.risk_scan': 'Pengimbas Risiko',
+    'verdict.tab.investor_alert': 'Alert Pelabur',
+    'verdict.scan.hint': 'Tampal alamat, handle, URL, atau nombor telefon mencurigakan',
     'alerts.quick.title': 'Pangkalan Data Pantas Alert Pelabur',
     'alerts.quick.subtitle': 'Semak entiti pelaburan mencurigakan dalam senarai amaran SC Malaysia sebelum bertindak.',
     'alerts.quick.placeholder': 'Masukkan nama syarikat, platform, atau promoter',
@@ -192,6 +219,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     'flow.legit.tip2': 'Jangan hantar wang berdasarkan satu mesej sahaja',
     'flow.legit.tip3': 'Jika rasa tidak kena, percaya naluri anda dan tunggu',
     'flow.legit.check_another': 'Semak Yang Lain',
+    'flow.phase.input': 'Input',
+    'flow.phase.scan': 'Imbas',
+
+    // Dashboard
+    'dashboard.jump.achievements': 'Pencapaian',
+    'dashboard.jump.referrals': 'Rujukan',
+    'dashboard.jump.competition': 'Pertandingan',
+    'dashboard.jump.bounties': 'Bounty',
+    'dashboard.jump.activity': 'Aktiviti',
 
     // Playbook
     'playbook.stop.bank': 'Hubungi talian penipuan bank anda sekarang. Minta pembekuan serta-merta pada pemindahan keluar. Minta nombor rujukan kes.',
@@ -212,5 +248,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     'intel.threat_level': 'Tahap Ancaman',
     'intel.status': 'AKTIF',
     'intel.region': 'MY-KUL',
+
+    // Leaderboard
+    'leaderboard.filter.placeholder': 'Tapis ikut nama pengguna',
+    'leaderboard.filter.premium_only': 'Premium sahaja',
+    'leaderboard.filter.all_tiers': 'Semua tier',
+    'leaderboard.filter.no_match': 'Tiada pengguna sepadan dengan tapisan anda.',
   },
 }

@@ -1,4 +1,5 @@
 import type { VerdictResult } from "../types";
+import { getBankHotlinesMessage, getPoliceGuideMessage, getNSRCGuideMessage } from "./emergencyContacts";
 
 export interface ChatOption {
   text: string;
@@ -16,6 +17,9 @@ export type QuickActionIntent =
   | "check_wallet"
   | "generate_report"
   | "emergency_contacts"
+  | "bank_hotlines"
+  | "police_guide"
+  | "nsrc_info"
   | "unknown";
 
 export interface ChatSignals {
@@ -225,45 +229,49 @@ function walletCheckWithVerdictResponse(signals: ChatSignals, verdict: VerdictRe
 }
 
 function reportResponse(signals: ChatSignals): ChatResponse {
+  const message = getPoliceGuideMessage(signals.language);
+  
   if (signals.language === "bm") {
     return {
-      message: "Saya akan bantu jana laporan. Beritahu bila kejadian berlaku, jumlah rugi, dan platform.",
+      message,
       options: [
-        { text: "Hotline fraud bank", action: "Tunjuk semua nombor hotline fraud bank" },
-        { text: "Panduan laporan polis", action: "Bagaimana cara buat laporan polis untuk scam online?" },
-        { text: "Apa fungsi NSRC 997?", action: "NSRC 997 bantu apa?" }
+        { text: "Nombor kecemasan", action: "Tunjuk nombor hotline fraud bank dan NSRC" },
+        { text: "Apa fungsi NSRC 997?", action: "NSRC 997 bantu apa?" },
+        { text: "Saya sudah buat laporan", action: "Saya sudah failkan laporan polis, apa seterusnya?" }
       ]
     };
   }
 
   return {
-    message: "I'll help you generate a report. Tell me when it happened, amount lost, and platform used.",
+    message,
     options: [
-      { text: "Bank fraud hotlines", action: "Show me all bank fraud hotline numbers" },
-      { text: "Police reporting guide", action: "How do I file a police report for online scams?" },
-      { text: "NSRC coordination", action: "What does NSRC 997 help with?" }
+      { text: "Emergency contacts", action: "Show me bank fraud hotlines and NSRC" },
+      { text: "NSRC coordination", action: "What does NSRC 997 help with?" },
+      { text: "I filed the report", action: "I already filed a police report, what's next?" }
     ]
   };
 }
 
 function emergencyContactsResponse(signals: ChatSignals): ChatResponse {
+  const message = getBankHotlinesMessage(signals.language);
+  
   if (signals.language === "bm") {
     return {
-      message: "Ini nombor kecemasan kritikal. Hubungi mengikut urutan.",
+      message,
       options: [
-        { text: "Hotline fraud bank", action: "Tunjuk semua nombor hotline fraud bank" },
         { text: "Panduan laporan polis", action: "Bagaimana cara buat laporan polis untuk scam online?" },
-        { text: "Apa fungsi NSRC 997?", action: "NSRC 997 bantu apa?" }
+        { text: "Apa fungsi NSRC 997?", action: "NSRC 997 bantu apa?" },
+        { text: "Jana laporan", action: "Saya nak jana laporan polis sekarang" }
       ]
     };
   }
 
   return {
-    message: "Here are the critical emergency numbers. Call them in this order.",
+    message,
     options: [
-      { text: "Bank fraud hotlines", action: "Show me all bank fraud hotline numbers" },
       { text: "Police reporting guide", action: "How do I file a police report for online scams?" },
-      { text: "NSRC coordination", action: "What does NSRC 997 help with?" }
+      { text: "NSRC coordination", action: "What does NSRC 997 help with?" },
+      { text: "Generate report", action: "I want to generate a police report now" }
     ]
   };
 }
@@ -328,6 +336,44 @@ export function detectQuickActionIntent(text: string): QuickActionIntent {
   }
 
   if (containsAny(normalized, [
+    "bank fraud hotline",
+    "bank hotline",
+    "bank emergency number",
+    "hotline fraud bank",
+    "nombor hotline bank",
+    "nombor bank",
+    "tunjuk nombor",
+    "show me bank",
+    "show me all bank",
+  ])) {
+    return "bank_hotlines";
+  }
+
+  if (containsAny(normalized, [
+    "police report",
+    "file a police report",
+    "how do i file",
+    "police reporting guide",
+    "panduan laporan polis",
+    "cara buat laporan",
+    "bagaimana cara buat laporan polis",
+  ])) {
+    return "police_guide";
+  }
+
+  if (containsAny(normalized, [
+    "nsrc",
+    "997",
+    "what does nsrc",
+    "nsrc 997",
+    "nsrc bantu",
+    "what is nsrc",
+    "apa fungsi nsrc",
+  ])) {
+    return "nsrc_info";
+  }
+
+  if (containsAny(normalized, [
     "generate a report",
     "generate report",
     "help me generate a police report",
@@ -373,6 +419,78 @@ export function analyzeChatInput(text: string): ChatSignals {
   };
 }
 
+function bankHotlinesResponse(signals: ChatSignals): ChatResponse {
+  const message = getBankHotlinesMessage(signals.language);
+  
+  if (signals.language === "bm") {
+    return {
+      message,
+      options: [
+        { text: "Panduan laporan polis", action: "Bagaimana cara buat laporan polis untuk scam online?" },
+        { text: "Apa fungsi NSRC 997?", action: "NSRC 997 bantu apa?" },
+        { text: "Saya terkena scam", action: "Saya kena scam — apa perlu buat?" }
+      ]
+    };
+  }
+
+  return {
+    message,
+    options: [
+      { text: "Police reporting guide", action: "How do I file a police report for online scams?" },
+      { text: "NSRC coordination", action: "What does NSRC 997 help with?" },
+      { text: "I got scammed", action: "I got scammed — what now?" }
+    ]
+  };
+}
+
+function policeGuideResponse(signals: ChatSignals): ChatResponse {
+  const message = getPoliceGuideMessage(signals.language);
+  
+  if (signals.language === "bm") {
+    return {
+      message,
+      options: [
+        { text: "Nombor kecemasan", action: "Tunjuk nombor hotline fraud bank dan NSRC" },
+        { text: "Apa fungsi NSRC 997?", action: "NSRC 997 bantu apa?" },
+        { text: "Saya sudah buat laporan", action: "Saya sudah failkan laporan polis, apa seterusnya?" }
+      ]
+    };
+  }
+
+  return {
+    message,
+    options: [
+      { text: "Emergency contacts", action: "Show me bank fraud hotlines and NSRC" },
+      { text: "NSRC coordination", action: "What does NSRC 997 help with?" },
+      { text: "I filed the report", action: "I already filed a police report, what's next?" }
+    ]
+  };
+}
+
+function nsrcInfoResponse(signals: ChatSignals): ChatResponse {
+  const message = getNSRCGuideMessage(signals.language);
+  
+  if (signals.language === "bm") {
+    return {
+      message,
+      options: [
+        { text: "Nombor hotline bank", action: "Tunjuk semua nombor hotline fraud bank" },
+        { text: "Panduan laporan polis", action: "Bagaimana cara buat laporan polis untuk scam online?" },
+        { text: "Saya terkena scam", action: "Saya kena scam — apa perlu buat?" }
+      ]
+    };
+  }
+
+  return {
+    message,
+    options: [
+      { text: "Bank fraud hotlines", action: "Show me all bank fraud hotline numbers" },
+      { text: "Police reporting guide", action: "How do I file a police report for online scams?" },
+      { text: "I got scammed", action: "I got scammed — what now?" }
+    ]
+  };
+}
+
 export function buildQuickActionResponse(signals: ChatSignals, verdict: VerdictResult | null = null): ChatResponse | null {
   if (signals.intent === "unknown") return null;
   if (signals.intent === "scammed_now") return scammedNowResponse(signals);
@@ -380,6 +498,9 @@ export function buildQuickActionResponse(signals: ChatSignals, verdict: VerdictR
     if (!signals.walletAddress) return walletCheckNoAddressResponse(signals);
     return walletCheckWithVerdictResponse(signals, verdict);
   }
+  if (signals.intent === "bank_hotlines") return bankHotlinesResponse(signals);
+  if (signals.intent === "police_guide") return policeGuideResponse(signals);
+  if (signals.intent === "nsrc_info") return nsrcInfoResponse(signals);
   if (signals.intent === "generate_report") return reportResponse(signals);
   return emergencyContactsResponse(signals);
 }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Bot, User, Sparkles, Shield, RotateCcw } from 'lucide-react'
+import { Send, Bot, User, Sparkles, Shield, ExternalLink, Zap } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { TelegramIcon } from '../ui/BrandIcons'
 import { useLocale } from '../../context/LocaleContext'
@@ -19,14 +20,25 @@ function simpleMarkdown(text: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code class="bg-white/10 px-1 rounded text-cyber text-[11px]">$1</code>')
-    .replace(/^- (.+)$/gm, '<li class="ml-3">$1</li>')
-    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (m) => `<ul class="list-disc list-inside space-y-0.5 my-1">${m}</ul>`)
-    .replace(/^\d+\. (.+)$/gm, '<li class="ml-3">$1</li>')
-    .replace(/(<li class="ml-3">.*<\/li>\n?)+/g, (m) => `<ol class="list-decimal list-inside space-y-0.5 my-1">${m}</ol>`)
-    .replace(/\n{2,}/g, '</p><p class="mt-2">')
+    // Bold text with gradient for emergency keywords
+    .replace(/\*\*(.+?)\*\*/g, (_, content) => {
+      const isEmergency = /FREEZE|BEKUKAN|FREEZE YOUR BANK|NSRC|997|PDRM|Police/i.test(content)
+      return isEmergency 
+        ? `<strong class="text-cyber font-bold">${content}</strong>`
+        : `<strong class="text-white">${content}</strong>`
+    })
+    .replace(/\*(.+?)\*/g, '<em class="text-slate-400">$1</em>')
+    .replace(/`(.+?)`/g, '<code class="bg-white/10 px-1.5 py-0.5 rounded text-cyber text-[11px] font-mono">$1</code>')
+    // Bullet points with better styling
+    .replace(/^•\s+(.+)$/gm, '<li class="ml-4 pl-2 border-l-2 border-cyber/20">$1</li>')
+    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (m) => `<ul class="space-y-2 my-3">${m}</ul>`)
+    // Numbered lists
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<li class="ml-4 pl-2"><span class="text-cyber font-bold">$1.</span> $2</li>')
+    .replace(/(<li class="ml-4 pl-2">.*<\/li>\n?)+/g, (m) => `<ol class="space-y-2 my-3">${m}</ol>`)
+    // Section headers (lines starting with emoji)
+    .replace(/^([📞🕐💼⚠️✅].*):$/gm, '<div class="font-semibold text-white mt-3 mb-1 flex items-center gap-2">$1</div>')
+    // Preserve emojis and special chars
+    .replace(/\n{2,}/g, '</p><p class="mt-3">')
     .replace(/\n/g, '<br>')
 }
 
@@ -90,7 +102,11 @@ export function InlineAiChat() {
         return updated
       })
       if (i < words.length - 1) {
-        await new Promise(r => setTimeout(r, Math.max(8, Math.random() * 25)))
+        // Variable speed: faster for short words, slight pause on punctuation
+        const word = words[i]
+        const hasPunctuation = /[.!?,;:]$/.test(word)
+        const delay = hasPunctuation ? 60 + Math.random() * 40 : Math.max(12, Math.random() * 30)
+        await new Promise(r => setTimeout(r, delay))
       }
     }
     // Mark typing done
@@ -174,12 +190,19 @@ export function InlineAiChat() {
   }
 
   return (
-    <div className="glass-card-glow w-full max-w-2xl mx-auto flex flex-col overflow-hidden" style={{ maxHeight: '580px' }}>
+    <div className="glass-card-glow w-full max-w-2xl mx-auto flex flex-col overflow-hidden relative" style={{ maxHeight: '520px' }}>
+      {/* Ambient glow */}
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-60 h-40 bg-cyber/[0.06] rounded-full blur-3xl pointer-events-none" />
+      
       {/* Header */}
-      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-white/[0.06]">
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-cyber/10 border border-cyber/20">
+      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-white/[0.06] relative z-10">
+        <motion.div 
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-cyber/10 border border-cyber/20"
+          animate={{ boxShadow: ['0 0 0px rgba(6,182,212,0)', '0 0 12px rgba(6,182,212,0.3)', '0 0 0px rgba(6,182,212,0)'] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        >
           <Shield size={14} className="text-cyber" />
-        </div>
+        </motion.div>
         <div className="flex-1">
           <span className="font-display text-sm font-semibold text-white">ScamShield Support</span>
           <span className="live-dot ml-2" />
@@ -227,41 +250,76 @@ export function InlineAiChat() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[240px] max-h-[360px]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[240px] max-h-[360px] relative z-10">
         <AnimatePresence initial={false}>
           {messages.map((msg, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
               className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : ''}`}
             >
               {msg.role === 'assistant' && (
-                <div className="h-7 w-7 rounded-full bg-cyber/10 border border-cyber/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot size={13} className="text-cyber" />
-                </div>
+                <motion.div 
+                  className="h-7 w-7 rounded-full bg-cyber/10 border border-cyber/20 flex items-center justify-center shrink-0 mt-0.5"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                >
+                  {msg.typing ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Sparkles size={13} className="text-cyber" />
+                    </motion.div>
+                  ) : (
+                    <Bot size={13} className="text-cyber" />
+                  )}
+                </motion.div>
               )}
               <div
-                className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed relative overflow-hidden ${
                   msg.role === 'user'
                     ? 'bg-cyber/10 border border-cyber/20 text-slate-200'
                     : 'bg-white/[0.03] border border-white/[0.06] text-slate-300'
                 }`}
               >
+                {/* Shimmer effect on assistant messages while typing */}
+                {msg.role === 'assistant' && msg.typing && (
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.06), transparent)' }}
+                    animate={{ x: ['-100%', '200%'] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                  />
+                )}
                 {msg.role === 'assistant' ? (
                   <div
-                    className="prose-sm [&_strong]:text-white [&_em]:text-slate-500 [&_code]:text-cyber"
+                    className="prose-sm [&_strong]:text-white [&_em]:text-slate-500 [&_code]:text-cyber relative z-10"
                     dangerouslySetInnerHTML={{ __html: simpleMarkdown(msg.content) }}
                   />
                 ) : (
                   <p>{msg.content}</p>
                 )}
                 {msg.typing && msg.content === '' && (
-                  <div className="flex gap-1 py-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyber/50 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyber/50 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyber/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="flex gap-1.5 py-1 items-center">
+                    <motion.span 
+                      className="h-1.5 w-1.5 rounded-full bg-cyber" 
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                    />
+                    <motion.span 
+                      className="h-1.5 w-1.5 rounded-full bg-cyber" 
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                    />
+                    <motion.span 
+                      className="h-1.5 w-1.5 rounded-full bg-cyber" 
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                    />
                   </div>
                 )}
                 
@@ -270,21 +328,22 @@ export function InlineAiChat() {
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
+                    transition={{ delay: 0.15, duration: 0.3 }}
                     className="flex flex-col gap-2 mt-3 pt-3 border-t border-white/[0.08]"
                   >
                     {msg.options.map((opt, idx) => (
                       <motion.button
                         key={idx}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 + idx * 0.08 }}
-                        whileHover={{ x: 3, scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
+                        initial={{ opacity: 0, x: -10, filter: 'blur(4px)' }}
+                        animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                        transition={{ delay: 0.2 + idx * 0.1, duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                        whileHover={{ x: 4, scale: 1.01, backgroundColor: 'rgba(6,182,212,0.1)' }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={() => handleSend(opt.action)}
                         disabled={sending}
-                        className="text-left px-3 py-2.5 rounded-lg border border-cyber/20 bg-cyber/[0.04] text-[12px] font-medium text-slate-300 hover:text-white hover:bg-cyber/10 hover:border-cyber/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="text-left px-3 py-2.5 rounded-lg border border-cyber/20 bg-cyber/[0.04] text-[12px] font-medium text-slate-300 hover:text-white hover:border-cyber/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 group"
                       >
+                        <Zap size={10} className="text-cyber/40 group-hover:text-cyber transition-colors shrink-0" />
                         {opt.text}
                       </motion.button>
                     ))}
@@ -292,9 +351,14 @@ export function InlineAiChat() {
                 )}
               </div>
               {msg.role === 'user' && (
-                <div className="h-7 w-7 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0 mt-0.5">
+                <motion.div 
+                  className="h-7 w-7 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0 mt-0.5"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                >
                   <User size={13} className="text-slate-400" />
-                </div>
+                </motion.div>
               )}
             </motion.div>
           ))}
@@ -308,17 +372,22 @@ export function InlineAiChat() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex gap-1.5 px-4 pb-2 flex-wrap"
+            className="flex gap-1.5 px-4 pb-2 flex-wrap relative z-10"
           >
-            {quickActions.map(qa => (
-              <button
+            {quickActions.map((qa, idx) => (
+              <motion.button
                 key={qa.key}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + idx * 0.08 }}
+                whileHover={{ scale: 1.03, borderColor: 'rgba(6,182,212,0.3)' }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => handleSend(t(qa.key))}
                 disabled={sending}
                 className="rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1.5 font-mono text-[10px] text-slate-500 hover:text-cyber hover:border-cyber/20 hover:bg-cyber/[0.04] transition-all disabled:opacity-40"
               >
                 {t(qa.key)}
-              </button>
+              </motion.button>
             ))}
           </motion.div>
         )}
@@ -347,7 +416,13 @@ export function InlineAiChat() {
           onClick={() => handleSend()}
           disabled={!input.trim() || sending}
         >
-          <Send size={14} />
+          {sending ? (
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+              <Sparkles size={14} />
+            </motion.div>
+          ) : (
+            <Send size={14} />
+          )}
           <span className="hidden sm:inline">{t('ai.btn.send')}</span>
           </Button>
         </div>

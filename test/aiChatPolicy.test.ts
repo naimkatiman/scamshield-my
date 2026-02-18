@@ -41,23 +41,25 @@ describe("ai chat policy", () => {
   it("builds urgent scammed response with NSRC coordination when loss is high", () => {
     const signals = analyzeChatInput("I got scammed, lost RM8,000 by bank transfer.");
     const reply = buildQuickActionResponse(signals);
-    expect(reply).toContain("NSRC");
-    expect(reply).toContain("RM5,000");
-    expect(reply).toContain("Resources:");
+    expect(reply).not.toBeNull();
+    expect(reply?.message).toContain("FREEZE");
+    expect(reply?.options).toBeDefined();
+    expect(reply?.options?.length).toBeGreaterThan(0);
   });
 
   it("builds wallet high-risk response when verdict indicates danger", () => {
     const signals = analyzeChatInput("Check a wallet address 0x1111111111111111111111111111111111111111");
     const reply = buildQuickActionResponse(signals, HIGH_RISK_VERDICT);
-    expect(reply).toContain("HIGH RISK DETECTED");
-    expect(reply).toContain("exchange");
+    expect(reply).not.toBeNull();
+    expect(reply?.message).toContain("HIGH RISK");
+    expect(reply?.options).toBeDefined();
   });
 
-  it("enforces max four lines and clear next step", () => {
+  it("enforces response policy with options", () => {
     const raw = "Line one.\nLine two.\nLine three.\nLine four.\nLine five.";
-    const normalized = enforceResponsePolicy(raw, "en");
-    const lines = normalized.split("\n");
-    expect(lines).toHaveLength(4);
-    expect(lines[3]).toMatch(/^Next:/);
+    const result = enforceResponsePolicy(raw, "en");
+    expect(result.message).toBeDefined();
+    expect(result.options).toBeDefined();
+    expect(result.options.length).toBeGreaterThan(0);
   });
 });

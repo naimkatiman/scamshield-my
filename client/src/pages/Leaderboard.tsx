@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Crown, Trophy, Flame, Users, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { Crown, Trophy, Flame, Users, RefreshCcw, ShieldCheck, Search } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import { getDashboardAdmin, getLeaderboard, type DashboardAdminResponse, type LeaderboardEntry } from '../lib/api'
 
 function formatDateTime(value: string | null): string {
@@ -15,11 +17,14 @@ function formatDateTime(value: string | null): string {
 
 export function Leaderboard() {
   const { isAuthenticated, isAdmin } = useAuth()
+  const { t } = useLocale()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
   const [rows, setRows] = useState<LeaderboardEntry[]>([])
   const [adminSnapshot, setAdminSnapshot] = useState<DashboardAdminResponse | null>(null)
+  const [search, setSearch] = useState('')
+  const [premiumOnly, setPremiumOnly] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -44,6 +49,14 @@ export function Leaderboard() {
     loadData()
   }, [loadData])
 
+  const filteredRows = useMemo(() => {
+    return rows.filter((entry) => {
+      const matchesSearch = !search.trim() || entry.displayName.toLowerCase().includes(search.trim().toLowerCase())
+      const matchesTier = !premiumOnly || entry.premiumUnlocked
+      return matchesSearch && matchesTier
+    })
+  }, [rows, search, premiumOnly])
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 space-y-4">
@@ -52,7 +65,7 @@ export function Leaderboard() {
     )
   }
 
-  const top = rows[0]
+  const top = filteredRows[0]
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 space-y-6">
@@ -72,6 +85,28 @@ export function Leaderboard() {
           <p className="font-mono text-xs text-threat-critical">{error}</p>
         </Card>
       )}
+
+      <Card className="p-4">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('leaderboard.filter.placeholder')}
+            icon={<Search size={14} />}
+            className="py-2.5 text-xs"
+          />
+          <button
+            onClick={() => setPremiumOnly((prev) => !prev)}
+            className={`rounded-lg border px-3 py-2 font-mono text-[10px] uppercase tracking-wider transition-all ${
+              premiumOnly
+                ? 'border-safe/30 bg-safe/10 text-safe'
+                : 'border-white/[0.1] bg-white/[0.02] text-slate-400 hover:border-white/[0.2] hover:text-slate-200'
+            }`}
+          >
+            {premiumOnly ? t('leaderboard.filter.premium_only') : t('leaderboard.filter.all_tiers')}
+          </button>
+        </div>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card variant="glow" className="p-5 md:col-span-2">
@@ -99,8 +134,8 @@ export function Leaderboard() {
             <Users size={15} className="text-cyber/80" />
             <span className="section-title">Snapshot</span>
           </div>
-          <p className="font-mono text-2xl text-white">{rows.length}</p>
-          <p className="data-label">Visible Ranked Users</p>
+          <p className="font-mono text-2xl text-white">{filteredRows.length}</p>
+          <p className="data-label">Visible Ranked Users {filteredRows.length !== rows.length ? `(of ${rows.length})` : ''}</p>
           <p className="font-mono text-[10px] text-slate-600 mt-3">Updated {formatDateTime(generatedAt)}</p>
         </Card>
       </div>
@@ -112,8 +147,10 @@ export function Leaderboard() {
             <span className="section-title">Rankings</span>
           </div>
 
-          {rows.length === 0 ? (
-            <p className="font-body text-sm text-slate-600 text-center py-8">No leaderboard entries yet.</p>
+          {filteredRows.length === 0 ? (
+            <p className="font-body text-sm text-slate-600 text-center py-8">
+              {rows.length === 0 ? 'No leaderboard entries yet.' : t('leaderboard.filter.no_match')}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[680px]">
@@ -128,7 +165,7 @@ export function Leaderboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((entry) => (
+                  {filteredRows.map((entry) => (
                     <tr key={`${entry.userId}-${entry.rank}`} className="border-b border-white/[0.03] last:border-0">
                       <td className="py-2 font-mono text-xs text-slate-400">
                         <span className="inline-flex items-center gap-1">
