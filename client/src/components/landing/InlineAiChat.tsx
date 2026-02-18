@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Send, Bot, User, Sparkles, Shield, RotateCcw } from 'lucide-react'
 import { Send, Bot, User, Sparkles, Shield, ExternalLink, Zap } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { TelegramIcon } from '../ui/BrandIcons'
@@ -49,19 +50,35 @@ const quickActions = [
 ]
 
 export function InlineAiChat() {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { toast } = useToast()
+  const initialMessage: Message = {
+    role: 'assistant',
+    content: `**${t('ai.greeting.title')}**\n\n${t('ai.greeting.body')}\n\n*Join our Telegram support group for immediate help: https://t.me/ScamShieldMY*`,
+  }
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: `**${t('ai.greeting.title')}**\n\n${t('ai.greeting.body')}\n\n*Join our Telegram support group for immediate help: https://t.me/ScamShieldMY*`,
-    },
+    initialMessage,
   ])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const messageHistoryRef = useRef<Message[]>([initialMessage])
+
+  const journeySteps = locale === 'bm'
+    ? ['Terangkan situasi', 'Bendung kerugian', 'Selesaikan laporan']
+    : ['Describe incident', 'Contain losses', 'Complete reports']
+
+  const completedSteps = Math.min(3, Math.max(1, Math.floor(messages.length / 2) + (sending ? 1 : 0)))
+
+  const resetChat = () => {
+    setMessages([initialMessage])
+    messageHistoryRef.current = [initialMessage]
+    setInput('')
+    setShowQuickActions(true)
+    inputRef.current?.focus()
+  }
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -81,6 +98,7 @@ export function InlineAiChat() {
         if (last && last.role === 'assistant' && last.typing) {
           updated[updated.length - 1] = { ...last, content: snapshot }
         }
+        messageHistoryRef.current = updated
         return updated
       })
       if (i < words.length - 1) {
@@ -98,6 +116,7 @@ export function InlineAiChat() {
       if (last && last.typing) {
         updated[updated.length - 1] = { ...last, typing: false }
       }
+      messageHistoryRef.current = updated
       return updated
     })
   }, [])
@@ -109,14 +128,22 @@ export function InlineAiChat() {
     setShowQuickActions(false)
 
     const userMsg: Message = { role: 'user', content: text }
-    setMessages(prev => [...prev, userMsg])
+    setMessages(prev => {
+      const updated = [...prev, userMsg]
+      messageHistoryRef.current = updated
+      return updated
+    })
     setSending(true)
 
     // Add empty assistant message for typing effect
-    setMessages(prev => [...prev, { role: 'assistant', content: '', typing: true }])
+    setMessages(prev => {
+      const updated = [...prev, { role: 'assistant' as const, content: '', typing: true }]
+      messageHistoryRef.current = updated
+      return updated
+    })
 
     try {
-      const allMessages = [...messages, userMsg]
+      const allMessages = [...messageHistoryRef.current]
       const res = await sendChatMessage(
         allMessages.map(m => ({ role: m.role, content: m.content }))
       )
@@ -130,6 +157,7 @@ export function InlineAiChat() {
           if (last && last.role === 'assistant') {
             updated[updated.length - 1] = { ...last, options: res.options }
           }
+          messageHistoryRef.current = updated
           return updated
         })
       }
@@ -144,6 +172,7 @@ export function InlineAiChat() {
             typing: false,
           }
         }
+        messageHistoryRef.current = updated
         return updated
       })
       toast('Chat failed. Try again.', 'error')
@@ -187,6 +216,37 @@ export function InlineAiChat() {
           <TelegramIcon size={14} className="text-[#0088cc] group-hover:text-white" />
           <span className="font-mono text-[10px] text-[#0088cc] group-hover:text-white">JOIN</span>
         </a>
+      </div>
+
+      <div className="px-4 pt-3 pb-2 border-b border-white/[0.04] bg-white/[0.01]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {journeySteps.map((step, index) => {
+              const stepNumber = index + 1
+              const complete = completedSteps >= stepNumber
+              return (
+                <span
+                  key={step}
+                  className={`rounded-full border px-2 py-1 text-[10px] font-mono ${
+                    complete
+                      ? 'border-cyber/30 bg-cyber/[0.08] text-cyber'
+                      : 'border-white/[0.08] bg-white/[0.02] text-slate-500'
+                  }`}
+                >
+                  {stepNumber}. {step}
+                </span>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={resetChat}
+            className="inline-flex items-center gap-1 rounded-md border border-white/[0.08] px-2 py-1 text-[10px] font-mono text-slate-500 hover:text-white hover:border-white/20 transition-colors"
+          >
+            <RotateCcw size={10} />
+            {locale === 'bm' ? 'Mula semula' : 'Restart'}
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -334,12 +394,13 @@ export function InlineAiChat() {
       </AnimatePresence>
 
       {/* Input */}
-      <div className="flex items-end gap-2 px-4 py-3 border-t border-white/[0.06] relative z-10">
-        <textarea
+      <div className="flex flex-col gap-1.5 px-4 py-3 border-t border-white/[0.06]">
+        <div className="flex items-end gap-2">
+          <textarea
           ref={inputRef}
           value={input}
           onChange={e => {
-            setInput(e.target.value)
+            setInput(e.target.value.slice(0, 500))
             e.target.style.height = 'auto'
             e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px'
           }}
@@ -348,8 +409,8 @@ export function InlineAiChat() {
           rows={1}
           className="flex-1 resize-none bg-transparent font-body text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none leading-relaxed"
           disabled={sending}
-        />
-        <Button
+          />
+          <Button
           variant="primary"
           size="sm"
           onClick={() => handleSend()}
@@ -363,7 +424,12 @@ export function InlineAiChat() {
             <Send size={14} />
           )}
           <span className="hidden sm:inline">{t('ai.btn.send')}</span>
-        </Button>
+          </Button>
+        </div>
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-600 px-0.5">
+          <span>{locale === 'bm' ? 'Petua: guna tindakan pantas untuk respon lebih cepat.' : 'Tip: use quick actions for faster response.'}</span>
+          <span>{input.length}/500</span>
+        </div>
       </div>
     </div>
   )
